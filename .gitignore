@@ -1,0 +1,40 @@
+# ============= 项目级 gitignore =============
+# 该文件被放置在仓库根目录，作用于整个工程
+
+# ============= 构建/输出目录 =============
+# Keil MDK 构建输出（存放 .o / .hex / .axf 等）
+/OBJ/
+/OBJ/*.hex
+/OBJ/*.axf
+/OBJ/*.bin
+/OBJ/*.map
+/OBJ/*.lst
+/OBJ/*.crf
+/OBJ/*.htm
+/OBJ/*.dep
+/OBJ/*.d
+/OBJ/*.o
+
+# EIDE 构建输出（如有同名 build 目录位于仓库根）
+/build/
+
+# ============= Office 临时文件 =============
+# Excel / Word / PowerPoint 锁定文件（~ 开头）
+~$*.xlsx
+~$*.xls
+~$*.docx
+~$*.doc
+~$*.pptx
+~$*.ppt
+
+# ============= Keil / MDK 用户相关 =============
+# Keil 清理脚本生成的临时输出（keilkilll.bat 会删除 build artifacts）
+# 该脚本本身保留在版本库中
+
+# ============= 通用 =============
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+*.swp
+*.bak
