@@ -31,6 +31,21 @@
 # Keil 清理脚本生成的临时输出（keilkilll.bat 会删除 build artifacts）
 # 该脚本本身保留在版本库中
 
+# ============= CubeMX 附带的 CMSIS：只跟踪构建需要的部分 =============
+# 构建只引用 Drivers/CMSIS/Include 和 Drivers/CMSIS/Device/ST/STM32F4xx/Include
+# DSP(912)/NN(102)/Core/Core_A/DAP/RTOS/Source模板 等未参与编译，不入库
+# （需要时可从 STM32Cube FW_F4 包重新生成/恢复）
+/OmniCar/Drivers/CMSIS/*
+!/OmniCar/Drivers/CMSIS/Include/
+!/OmniCar/Drivers/CMSIS/Device/
+/OmniCar/Drivers/CMSIS/Device/*
+!/OmniCar/Drivers/CMSIS/Device/ST/
+/OmniCar/Drivers/CMSIS/Device/ST/*
+!/OmniCar/Drivers/CMSIS/Device/ST/STM32F4xx/
+/OmniCar/Drivers/CMSIS/Device/ST/STM32F4xx/*
+!/OmniCar/Drivers/CMSIS/Device/ST/STM32F4xx/Include/
+!/OmniCar/Drivers/CMSIS/Device/ST/STM32F4xx/LICENSE.txt
+
 # ============= 通用 =============
 .DS_Store
 Thumbs.db
