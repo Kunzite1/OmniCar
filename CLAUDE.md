@@ -48,6 +48,7 @@ cmake --build --preset Debug  # builds build/Debug/OmniCar.elf
 - **Flashing/debug on Linux uses openocd + ST-Link** (the `stlink-tools` 1.7.0 `st-flash` binary is currently broken on this host — `libusb_set_option` symbol error). `OmniCar/.vscode/` has `tasks.json` (`build`, `flash`, `clean`) and `launch.json` (cortex-debug + openocd). Flash CLI equivalent:
   `openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program build/OmniCar.elf verify reset exit"`.
   The CMake build only produces `build/OmniCar.elf` unless the `POST_BUILD` objcopy step runs — it now generates `.bin`/`.hex` too.
+- **工作约定：Claude 不执行烧录操作**（openocd program / st-flash / VSCode `flash` 任务一律不代跑），只负责 `cmake --build` 编译与排错；编译通过即交付，烧录由用户手动完成（VSCode `flash` 任务或上述命令行）。
 
 ### Keil MDK-ARM (legacy, still functional)
 
