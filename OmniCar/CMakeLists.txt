@@ -68,8 +68,9 @@ set(OMNICAR_LAYER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/led/led.c
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/motor/motor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/uart/uart.c
-    # Middleware — 无硬件依赖的服务
+    # Middleware — 通用服务（log 经 BSP/uart 驱动串口）
     ${CMAKE_CURRENT_SOURCE_DIR}/Middleware/can_protocol/can_protocol.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middleware/log/log.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Middleware/math/math.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Middleware/ringbuffer/ringbuffer.c
     # Motion — 运动学解算 / 控制

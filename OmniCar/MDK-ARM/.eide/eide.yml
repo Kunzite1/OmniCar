@@ -84,6 +84,11 @@ virtualFolder:
     - name: Middleware
       files: []
       folders:
+        - name: log
+          files:
+            - path: ../Middleware/log/log.c
+            - path: ../Middleware/log/log.h
+          folders: []
         - name: can_protocol
           files:
             - path: ../Middleware/can_protocol/can_protocol.c
