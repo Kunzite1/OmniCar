@@ -18,6 +18,10 @@
 # EIDE 构建输出（如有同名 build 目录位于仓库根）
 /build/
 
+# CMake + GCC 构建输出（Linux 公司电脑）
+# 注意：这是 OmniCar/ 下的 build 目录，不是仓库根目录的那个
+/OmniCar/build/
+
 # ============= Office 临时文件 =============
 # Excel / Word / PowerPoint 锁定文件（~ 开头）
 ~$*.xlsx
