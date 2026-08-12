@@ -6,6 +6,9 @@
   */
 #include "App/main/app_main.h"
 
+#include "BSP/led/led.h"
+#include "main.h" /* HAL_Delay */
+
 /* 模块实现将在此编写 */
 
 /**
@@ -13,6 +16,7 @@
   */
 void App_Init(void)
 {
+    BSP_LED_Init();
 }
 
 /**
@@ -20,4 +24,6 @@ void App_Init(void)
   */
 void App_Loop(void)
 {
+    BSP_LED_Toggle();
+    HAL_Delay(500);
 }

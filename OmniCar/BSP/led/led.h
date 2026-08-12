@@ -11,7 +11,25 @@
 extern "C" {
 #endif
 
-/* 模块对外接口将在此声明 */
+/**
+  * @brief 初始化板载 LED（引脚配置由 CubeMX 完成，这里置为默认熄灭状态）
+  */
+void BSP_LED_Init(void);
+
+/**
+  * @brief 点亮板载 LED（PA1 为开漏输出，低电平点亮）
+  */
+void BSP_LED_On(void);
+
+/**
+  * @brief 熄灭板载 LED
+  */
+void BSP_LED_Off(void);
+
+/**
+  * @brief 翻转板载 LED 状态
+  */
+void BSP_LED_Toggle(void);
 
 #ifdef __cplusplus
 }
