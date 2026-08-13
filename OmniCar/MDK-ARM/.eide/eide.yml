@@ -22,8 +22,11 @@ virtualFolder:
               files:
                 - path: ../Core/Src/main.c
                 - path: ../Core/Src/gpio.c
+                - path: ../Core/Src/usart.c
+                - path: ../Core/Src/freertos.c
                 - path: ../Core/Src/stm32f4xx_it.c
                 - path: ../Core/Src/stm32f4xx_hal_msp.c
+                - path: ../Core/Src/stm32f4xx_hal_timebase_tim.c
               folders: []
     - name: Drivers
       files: []
@@ -43,11 +46,27 @@ virtualFolder:
             - path: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c
             - path: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c
             - path: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c
+            - path: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c
+            - path: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c
+            - path: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c
           folders: []
         - name: CMSIS
           files:
             - path: ../Core/Src/system_stm32f4xx.c
           folders: []
+    - name: FreeRTOS
+      files:
+        - path: ../Middlewares/Third_Party/FreeRTOS/Source/croutine.c
+        - path: ../Middlewares/Third_Party/FreeRTOS/Source/event_groups.c
+        - path: ../Middlewares/Third_Party/FreeRTOS/Source/list.c
+        - path: ../Middlewares/Third_Party/FreeRTOS/Source/queue.c
+        - path: ../Middlewares/Third_Party/FreeRTOS/Source/stream_buffer.c
+        - path: ../Middlewares/Third_Party/FreeRTOS/Source/tasks.c
+        - path: ../Middlewares/Third_Party/FreeRTOS/Source/timers.c
+        - path: ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.c
+        - path: ../Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c
+        - path: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F/port.c
+      folders: []
     - name: BSP
       files: []
       folders:
@@ -160,6 +179,9 @@ targets:
         - ../Core/Inc
         - ../Drivers/STM32F4xx_HAL_Driver/Inc
         - ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
+        - ../Middlewares/Third_Party/FreeRTOS/Source/include
+        - ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
+        - ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F
         - ../Drivers/CMSIS/Device/ST/STM32F4xx/Include
         - ../Drivers/CMSIS/Include
         - .cmsis/include

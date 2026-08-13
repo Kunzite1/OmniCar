@@ -19,7 +19,7 @@ extern "C" {
 void App_Init(void);
 
 /**
-  * @brief 业务层主循环体：由 main() 的 while(1) 周期调用
+  * @brief 业务层主循环体：由 FreeRTOS 默认任务周期调用
   */
 void App_Loop(void);
 
