@@ -4,9 +4,9 @@
 
 ## 项目概述
 
-OmniCar 是全向移动车的 **STM32 下位机**固件。MCU 为 **STM32F407VET6**（LQFP100），通过 CAN 与搭载激光雷达的 **Linux 上位机**通信（上位机板卡型号见 `采购清单.md`，v0.4.1 更换过）。v0.2 提交了五层架构（Core / BSP / Middleware / Motion / App）；**v0.4.2 移植 FreeRTOS（CMSIS-RTOS V2），`App_Loop()` 改由 RTOS 默认任务周期调用**。目前大部分模块仍是只声明接口的 stub；已落地：**`BSP/led`**（boardLED 每 500 ms 翻转一次，v0.3.1）、**`BSP/uart` + `Middleware/log`**（USART2 日志打印串口 + 分级日志中间件，v0.4）、**FreeRTOS 调度器**（v0.4.2）。**v0.5 以来未改动代码**：v0.5 补入核心板 Altium PCB 设计资料，v0.5.1 定稿电机/CAN/IMU 引脚分配（`引脚分配.md`「待接线」节），v0.5.2 绘制并下单了**模块转接板**（立创 EDA Pro 工程与 Gerber 在 `资料/自制转接板资料/`），**v0.5.3 进入电机调试**：CubeMX 已配置 TIM3 三路 PWM（PA6/PA7/PB0）+ 6 路方向 GPIO（PE13/14、PA4/5、PD14/15），`BSP/motor` 仍为 stub（见「硬件」节）。
+OmniCar 是全向移动车的 **STM32 下位机**固件。MCU 为 **STM32F407VET6**（LQFP100），通过 CAN 与搭载激光雷达的 **Linux 上位机**通信（上位机板卡型号见 `采购清单.md`，v0.4.1 更换过）。v0.2 提交了五层架构（Core / BSP / Middleware / Motion / App）；**v0.4.2 移植 FreeRTOS（CMSIS-RTOS V2），`App_Loop()` 改由 RTOS 默认任务周期调用**。目前大部分模块仍是只声明接口的 stub；已落地：**`BSP/led`**（boardLED 每 500 ms 翻转一次，v0.3.1）、**`BSP/uart` + `Middleware/log`**（USART2 日志打印串口 + 分级日志中间件，v0.4）、**FreeRTOS 调度器**（v0.4.2）。**v0.6 提交**：v0.5 补入核心板 Altium PCB 设计资料，v0.5.1 定稿电机/CAN/IMU 引脚分配（`引脚分配.md`「待接线」节），v0.5.2 绘制并下单了**模块转接板**（立创 EDA Pro 工程与 Gerber 在 `资料/自制转接板资料/`），**v0.6 进入电机调试并统一工具链**：CubeMX 已配置 TIM3 三路 PWM（PA6/PA7/PB0）+ 6 路方向 GPIO（PE13/14、PA4/5、PD14/15），Windows 端弃用 EIDE 改用同一套 CMake + GCC（µVision/EIDE 配置已删除），`BSP/motor` 仍为 stub（见「硬件」节）。
 
-**CMake + GCC 构建是主工具链**（v0.3 提交）：CubeMX 目标为 `CMake`（`.ioc`：`TargetToolchain=CMake`、`LibraryCopy=1`），供应商 HAL/CMSIS 目录已裁剪到只保留被编译的模块，五层源码已接入 `CMakeLists.txt`。该构建在 Linux / Windows 上均编译链接通过（见下方「构建」）。Windows 端与 Linux 端共用同一套 CMake + GCC 构建；**µVision 与 EIDE 配置均已删除（v0.5.3）**。
+**CMake + GCC 构建是主工具链**（v0.3 提交）：CubeMX 目标为 `CMake`（`.ioc`：`TargetToolchain=CMake`、`LibraryCopy=1`），供应商 HAL/CMSIS 目录已裁剪到只保留被编译的模块，五层源码已接入 `CMakeLists.txt`。该构建在 Linux / Windows 上均编译链接通过（见下方「构建」）。Windows 端与 Linux 端共用同一套 CMake + GCC 构建；**µVision 与 EIDE 配置均已删除（v0.6）**。
 
 ## 硬件 / 时钟 / 引脚
 
@@ -14,7 +14,7 @@ OmniCar 是全向移动车的 **STM32 下位机**固件。MCU 为 **STM32F407VET
 - 引脚接线总表：仓库根目录 `引脚分配.md`（已接线的照实填写，未接线的标「待定」）。
 - HSE 8 MHz → PLL（M=8, N=336, P=2）→ **168 MHz SYSCLK**；APB1 = 42 MHz，APB2 = 84 MHz（见 `Core/Src/main.c` 的 `SystemClock_Config()`）。
 - **时间基准（v0.4.2 起）：SysTick 归 FreeRTOS，HAL 的 `HAL_GetTick()`/`HAL_Delay()` 改由 TIM6 驱动** —— `Core/Src/stm32f4xx_hal_timebase_tim.c` 提供 `HAL_InitTick` 实现，`main.c` 的 `HAL_TIM_PeriodElapsedCallback()` 里对 TIM6 调 `HAL_IncTick()`。`Middleware/log` 时间戳仍取 `HAL_GetTick()`。
-- 引脚：**PA1 = `boardLED`** —— 开漏输出带内部上拉（`GPIO_MODE_OUTPUT_OD`），定义于 `Core/Inc/main.h`。目前是唯一的用户 GPIO；**PA2/PA3 = `USART2_TX/RX`**（复用 AF7）为日志打印串口（115200 8N1），已接线（见 `引脚分配.md`）。v0.5.1 已规划全部待接线（见 `引脚分配.md`「待接线」节）。**v0.5.3 起 CubeMX 已配置 TIM3 PWM（PA6/PA7/PB0，CH1/2/3）+ 6 路方向 GPIO（PE13/14、PA4/5、PD14/15）**，`BSP/motor` 待实现；编码器（TIM1/8/4）、CAN1（PD0/PD1）、IMU I2C1（PB8/PB9）**尚未在 `.ioc` 配置**，接线时需在 CubeMX 中新增。
+- 引脚：**PA1 = `boardLED`** —— 开漏输出带内部上拉（`GPIO_MODE_OUTPUT_OD`），定义于 `Core/Inc/main.h`。目前是唯一的用户 GPIO；**PA2/PA3 = `USART2_TX/RX`**（复用 AF7）为日志打印串口（115200 8N1），已接线（见 `引脚分配.md`）。v0.5.1 已规划全部待接线（见 `引脚分配.md`「待接线」节）。**v0.6 起 CubeMX 已配置 TIM3 PWM（PA6/PA7/PB0，CH1/2/3）+ 6 路方向 GPIO（PE13/14、PA4/5、PD14/15）**，`BSP/motor` 待实现；编码器（TIM1/8/4）、CAN1（PD0/PD1）、IMU I2C1（PB8/PB9）**尚未在 `.ioc` 配置**，接线时需在 CubeMX 中新增。
 
 ## 五层架构
 
@@ -28,7 +28,7 @@ OmniCar 是全向移动车的 **STM32 下位机**固件。MCU 为 **STM32F407VET
 
 **FreeRTOS（v0.4.2）：** 经 CubeMX 以 CMSIS-RTOS V2 方式接入，源码在 `Middlewares/Third_Party/FreeRTOS/Source/`（含 GCC `ARM_CM4F` port、`heap_4`、`cmsis_os2.c`）。关键配置在 `Core/Inc/FreeRTOSConfig.h`：**堆 32 KB**（`configTOTAL_HEAP_SIZE=32768`）、tick 1000 Hz、`configENABLE_FPU=0`、默认任务栈 256 字（1 KB）。**SysTick 归 RTOS 所有**，HAL 时间基准已切到 TIM6（见「时钟」）。任务创建在 `Core/Src/freertos.c` 的 `MX_FREERTOS_Init()` 里（CubeMX 生成，新增任务写在 `USER CODE BEGIN RTOS_THREADS` 块内）；堆栈溢出 / malloc 失败 hook 均已挂上（`configCHECK_FOR_STACK_OVERFLOW=2`）。
 
-**入口接线：** `Core/Src/main.c`：`HAL_Init()` → `SystemClock_Config()` → `MX_GPIO_Init()` → `MX_USART2_UART_Init()` → `App_Init()`（`USER CODE BEGIN 2`）→ `osKernelInitialize()` → `MX_FREERTOS_Init()` → `osKernelStart()`。启动后控制权交给调度器：`freertos.c` 的 `StartDefaultTask()` 里 `for(;;) App_Loop();`。main() 末尾的 `while(1)` 循环在调度器正常启动后不会执行（CubeMX 保留的死代码）；`App_Loop()` 里的延时已改用 `osDelay()`（`app_main.c` include `cmsis_os2.h`）。App 驱动下方各层；**BSP 是唯一直接调用 HAL 外设的层** —— 例外：`Middleware/log` 为取时间戳直接调用 `HAL_GetTick()`，并经由 `BSP/uart` 打印。
+**入口接线：** `Core/Src/main.c`：`HAL_Init()` → `SystemClock_Config()` → `MX_GPIO_Init()` → `MX_USART2_UART_Init()` → `MX_TIM3_Init()` → `App_Init()`（`USER CODE BEGIN 2`）→ `osKernelInitialize()` → `MX_FREERTOS_Init()` → `osKernelStart()`。启动后控制权交给调度器：`freertos.c` 的 `StartDefaultTask()` 里 `for(;;) App_Loop();`。main() 末尾的 `while(1)` 循环在调度器正常启动后不会执行（CubeMX 保留的死代码）；`App_Loop()` 里的延时已改用 `osDelay()`（`app_main.c` include `cmsis_os2.h`）。App 驱动下方各层；**BSP 是唯一直接调用 HAL 外设的层** —— 例外：`Middleware/log` 为取时间戳直接调用 `HAL_GetTick()`，并经由 `BSP/uart` 打印。
 
 每个模块都有手写的头文件，其 doc 注释用中文说明用途（如 `BSP/can/can.h` → 与上位机通信的 CAN 收发驱动）；新增模块时沿用该头文件风格并带 `extern "C"` 守卫。
 
@@ -57,16 +57,16 @@ cmake --build build    # 构建 → build/OmniCar.elf（并生成 .bin/.hex）
 
 ### Windows 端（CMake + GCC，与 Linux 相同）
 
-Windows 端与 Linux 端共用 `OmniCar/` 下**同一套 CMake 工程**，命令完全一致（见上），无独立构建配置。实测可行的安装路径（v0.5.3 验证）：
+Windows 端与 Linux 端共用 `OmniCar/` 下**同一套 CMake 工程**，命令完全一致（见上），无独立构建配置。实测可行的安装路径（v0.6 验证）：
 
 - 装 **MSYS2**（例如 D 盘），在 **UCRT64 终端**里 `pacman -S mingw-w64-ucrt-x86_64-arm-none-eabi-gcc mingw-w64-ucrt-x86_64-cmake make mingw-w64-ucrt-x86_64-openocd`，一次装齐工具链。
 - 把 `<msys>/ucrt64/bin` 与 `<msys>/usr/bin` 加进**用户** PATH（放在最前）。
-- **不要另装 Program Files 的 CMake 4.4+**：其 `-DCMAKE_TOOLCHAIN_FILE=…x.cmake` 会把 `.cmake` 后缀拆掉导致配置失败（PowerShell 下必现，v0.5.3 实测）。因系统 PATH 优先于用户 PATH，若系统里已有高版本 CMake，卸载或从 PATH 移除（`winget uninstall Kitware.CMake`）。
+- **不要另装 Program Files 的 CMake 4.4+**：其 `-DCMAKE_TOOLCHAIN_FILE=…x.cmake` 会把 `.cmake` 后缀拆掉导致配置失败（PowerShell 下必现，v0.6 实测）。因系统 PATH 优先于用户 PATH，若系统里已有高版本 CMake，卸载或从 PATH 移除（`winget uninstall Kitware.CMake`）。
 - **ST-Link 驱动 STSW-LINK009**（ST 官网）——Windows 特有，**不装则 openocd 认不到 ST-Link**。
 
 PowerShell 命令与 Linux 相同：`cmake -B build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake` → `cmake --build build` → `openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program build/OmniCar.elf verify reset exit"`。VSCode 打开 `OmniCar/OmniCar.code-workspace`，`build`/`flash`/`clean` 任务即用。
 
-**µVision 与 EIDE 配置均已删除（v0.5.3）** —— 不要同步、不要建议使用。他人要用源码请自行配置。
+**µVision 与 EIDE 配置均已删除（v0.6）** —— 不要同步、不要建议使用。他人要用源码请自行配置。
 
 ### 双端开发配置同步（工作约定）
 
@@ -92,3 +92,4 @@ Linux / Windows 共用 `OmniCar/` 下同一份 `CMakeLists.txt`、`.ioc`、`.vsc
 - 注释/提交消息中英文混排 —— 跟着附近内容保持一致。提交消息遵循 `vX.Y：中文描述`（如 `v0.2：迁移到CubeMX HAL工程，搭建五层架构骨架`）。
 - 根目录另有 **`AGENTS.md`**（仓库级规范：构建命令、编码/命名约定、提交与 PR 指南、人工验证要求），与本文件互为补充；两者冲突时以本文件为准。
 - 遇到问题时以本文件为第一参考；Claude 工作时的约束（不代跑烧录、两端共用同一套 CMake、µVision/EIDE 已删除）都在上面写明。
+- `README.md` 是给人类读者的进度/引脚/注意速览（详细规则以本文件为准）；涉及这些内容时两端同步更新。
