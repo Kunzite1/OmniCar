@@ -4,13 +4,13 @@
 
 ## 项目概述
 
-OmniCar 是全向移动车的 **STM32 下位机**固件。MCU 为 **STM32F407VET6**（LQFP100），通过 CAN 与搭载激光雷达的 **Linux 上位机**通信（上位机板卡型号见 `采购清单.md`，v0.4.1 更换过）。v0.2 提交了五层架构（Core / BSP / Middleware / Motion / App）；**v0.4.2 移植 FreeRTOS（CMSIS-RTOS V2），`App_Loop()` 改由 RTOS 默认任务周期调用**。目前大部分模块仍是只声明接口的 stub；已落地：**`BSP/led`**（boardLED 每 500 ms 翻转一次，v0.3.1）、**`BSP/uart` + `Middleware/log`**（USART2 日志打印串口 + 分级日志中间件，v0.4）、**FreeRTOS 调度器**（v0.4.2）。
+OmniCar 是全向移动车的 **STM32 下位机**固件。MCU 为 **STM32F407VET6**（LQFP100），通过 CAN 与搭载激光雷达的 **Linux 上位机**通信（上位机板卡型号见 `采购清单.md`，v0.4.1 更换过）。v0.2 提交了五层架构（Core / BSP / Middleware / Motion / App）；**v0.4.2 移植 FreeRTOS（CMSIS-RTOS V2），`App_Loop()` 改由 RTOS 默认任务周期调用**。目前大部分模块仍是只声明接口的 stub；已落地：**`BSP/led`**（boardLED 每 500 ms 翻转一次，v0.3.1）、**`BSP/uart` + `Middleware/log`**（USART2 日志打印串口 + 分级日志中间件，v0.4）、**FreeRTOS 调度器**（v0.4.2）。**最新 v0.5** 未改动代码，仅补入核心板 Altium PCB 设计资料（见「硬件」节）。
 
 **CMake + GCC 构建是主工具链**（v0.3 提交）：CubeMX 目标为 `CMake`（`.ioc`：`TargetToolchain=CMake`、`LibraryCopy=1`），供应商 HAL/CMSIS 目录已裁剪到只保留被编译的模块，五层源码已接入 `CMakeLists.txt`。该构建在 Linux 主机上编译链接通过（见下方「构建」）。**µVision 工程（`MDK-ARM/OmniCar.uvprojx`）不维护** —— Windows 端只用 VSCode + EIDE。
 
 ## 硬件 / 时钟 / 引脚
 
-- MCU：STM32F407VETx，LQFP100。核心板原理图：`资料/STM32F407VET6核心板原理图.pdf`。
+- MCU：STM32F407VETx，LQFP100。核心板原理图：`资料/STM32F407VET6核心板原理图.pdf`；v0.5 又补入该核心板的 Altium PCB 设计文件（`STM32_F4VX_M.PrjPcb` 及 PCB 制版图、封装定位图等，同在 `资料/`）。
 - 引脚接线总表：仓库根目录 `引脚分配.md`（已接线的照实填写，未接线的标「待定」）。
 - HSE 8 MHz → PLL（M=8, N=336, P=2）→ **168 MHz SYSCLK**；APB1 = 42 MHz，APB2 = 84 MHz（见 `Core/Src/main.c` 的 `SystemClock_Config()`）。
 - **时间基准（v0.4.2 起）：SysTick 归 FreeRTOS，HAL 的 `HAL_GetTick()`/`HAL_Delay()` 改由 TIM6 驱动** —— `Core/Src/stm32f4xx_hal_timebase_tim.c` 提供 `HAL_InitTick` 实现，`main.c` 的 `HAL_TIM_PeriodElapsedCallback()` 里对 TIM6 调 `HAL_IncTick()`。`Middleware/log` 时间戳仍取 `HAL_GetTick()`。
@@ -50,14 +50,14 @@ cmake --build build    # 构建 → build/OmniCar.elf（并生成 .bin/.hex）
 - `cmake/stm32cubemx/CMakeLists.txt`（CubeMX 生成）提供源码：Core + `startup_stm32f407xx.s`（根目录的 GCC 启动文件）+ 裁剪后的 HAL 驱动集 + **`FreeRTOS` OBJECT 库**（`FreeRTOS_Src`：`cmsis_os2.c`、`heap_4`、GCC `ARM_CM4F` port 等，v0.4.2 起）。**不要手工改这个文件。**
 - **五层（App/BSP/Middleware/Motion）通过 `CMakeLists.txt` 里的 `OMNICAR_LAYER_SOURCES` / `OMNICAR_LAYER_INCLUDE_DIRS` 接入构建**。include 根为项目根 + 四个层目录（与 EIDE 的 `..`/`../App` 等一致）——这就是 `#include "App/main/app_main.h"` 能解析的原因。**新增模块必须加进 `OMNICAR_LAYER_SOURCES`**（并同步 EIDE 的 `eide.yml`）。
 - include 根顺序重要：项目根排最前，保证 `App/...` 风格的路径优先于层目录里 `App/App/...` 双前缀被解析。
-- **Linux 上烧录/调试用 openocd + ST-Link**（本机 `stlink-tools` 1.7.0 的 `st-flash` 有 `libusb_set_option` 符号错误，已损坏）。`OmniCar/.vscode/` 下有 `tasks.json`（`build`、`flash`、`clean`）和 `launch.json`（cortex-debug + openocd）。命令行烧录等价：
+- **Linux 上烧录/调试用 openocd + ST-Link**（本机 `stlink-tools` 1.7.0 的 `st-flash` 有 `libusb_set_option` 符号错误，已损坏）。`OmniCar/.vscode/` 下有 `tasks.json`（`build`、`flash`、`clean`）和 `launch.json`（cortex-debug + openocd）；VSCode 工作区入口是 `OmniCar/OmniCar.code-workspace`。命令行烧录等价：
   `openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program build/OmniCar.elf verify reset exit"`
   CMake 构建默认只产 `build/OmniCar.elf`，`POST_BUILD` 的 objcopy 步骤还会生成 `.bin`/`.hex`。
 - **工作约定：Claude 不执行烧录操作**（openocd program / st-flash / VSCode `flash` 任务一律不代跑），只负责 `cmake --build` 编译与排错；编译通过即交付，烧录由用户手动完成（VSCode `flash` 任务或上述命令行）。
 
 ### VSCode + EIDE（Windows 端）
 
-Windows 端唯一工具是 **VSCode + EIDE**（`MDK-ARM/.vscode/tasks.json`：`build`/`rebuild`/`clean`/`flash`/`build and flash`）。`eide.yml` 的 uploader 是 **ST-Link**（SWD，base `0x08000000`，speed 4000）；调试用 `cortex-debug`。输出在 `MDK-ARM/build/`（已 gitignore）。
+Windows 端唯一工具是 **VSCode + EIDE**（`MDK-ARM/.vscode/tasks.json`：`build`/`rebuild`/`clean`/`flash`/`build and flash`）。`eide.yml` 的 uploader 是 **ST-Link**（SWD，base `0x08000000`，speed 4000）；调试用 `cortex-debug`。输出在 `MDK-ARM/build/`（已 gitignore）。**EIDE 用的编译器是 Keil AC5**（`eide.yml`：`toolchain: AC5`，FreeRTOS 走 `RVDS/ARM_CM4F` port）——µVision 工程虽不维护，但 Windows 端实际以 Keil 工具链编译，**新增代码须同时兼容 GCC 与 AC5**（C99）。
 
 **µVision（`MDK-ARM/OmniCar.uvprojx`）本项目不使用、不维护、不提及** —— 不要管它、不要同步它、不要建议用它。他人要用源码请自行配置或参考 EIDE 配置教程。
 
