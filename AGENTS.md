@@ -4,7 +4,7 @@
 
 Firmware lives under `OmniCar/` and targets the STM32F407VET6. Hand-written code follows a layered layout: `App/` contains the main loop and state handling, `Motion/` contains control and kinematics, `Middleware/` provides reusable services, and `BSP/` owns hardware-facing drivers. `Core/`, `Drivers/`, `startup_stm32f407xx.s`, and `cmake/stm32cubemx/` are STM32CubeMX or vendor-managed. Hardware references are in `资料/`, while pin assignments are documented in `引脚分配.md`.
 
-Keep application dependencies flowing downward; BSP is the layer that directly calls HAL peripherals. Put CubeMX-managed edits inside `/* USER CODE BEGIN */` blocks so regeneration preserves them. When adding a module, register its source in `OmniCar/CMakeLists.txt` and mirror it in `OmniCar/MDK-ARM/.eide/eide.yml`.
+Keep application dependencies flowing downward; BSP is the layer that directly calls HAL peripherals. Put CubeMX-managed edits inside `/* USER CODE BEGIN */` blocks so regeneration preserves them. When adding a module, register its source in `OmniCar/CMakeLists.txt` (the `OMNICAR_LAYER_SOURCES` list).
 
 ## Build, Test, and Development Commands
 
@@ -20,7 +20,7 @@ The build requires `arm-none-eabi-*` tools and produces `build/OmniCar.elf`, `.b
 
 ## Coding Style & Naming Conventions
 
-Code is C11. Follow `OmniCar/MDK-ARM/.clang-format`: four-space indentation, Linux-style braces, and no fixed column limit. Match nearby Chinese/English comments. Use module-prefixed public APIs such as `BSP_LED_Init()` and `App_Loop()`, lowercase module filenames, and paired `.c`/`.h` files. Include project headers from a layer root, for example `#include "BSP/led/led.h"`. Preserve the existing documented header and `extern "C"` guard style.
+Code is C11. Follow `OmniCar/.clang-format`: four-space indentation, Linux-style braces, and no fixed column limit. Match nearby Chinese/English comments. Use module-prefixed public APIs such as `BSP_LED_Init()` and `App_Loop()`, lowercase module filenames, and paired `.c`/`.h` files. Include project headers from a layer root, for example `#include "BSP/led/led.h"`. Preserve the existing documented header and `extern "C"` guard style.
 
 ## Testing Guidelines
 

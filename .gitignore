@@ -2,24 +2,7 @@
 # 该文件被放置在仓库根目录，作用于整个工程
 
 # ============= 构建/输出目录 =============
-# Keil MDK 构建输出（存放 .o / .hex / .axf 等）
-/OBJ/
-/OBJ/*.hex
-/OBJ/*.axf
-/OBJ/*.bin
-/OBJ/*.map
-/OBJ/*.lst
-/OBJ/*.crf
-/OBJ/*.htm
-/OBJ/*.dep
-/OBJ/*.d
-/OBJ/*.o
-
-# EIDE 构建输出（如有同名 build 目录位于仓库根）
-/build/
-
-# CMake + GCC 构建输出（Linux 公司电脑）
-# 注意：这是 OmniCar/ 下的 build 目录，不是仓库根目录的那个
+# CMake + GCC 构建输出（Linux / Windows 通用）
 /OmniCar/build/
 
 # ============= Office 临时文件 =============
@@ -30,10 +13,6 @@
 ~$*.doc
 ~$*.pptx
 ~$*.ppt
-
-# ============= Keil / MDK 用户相关 =============
-# Keil 清理脚本生成的临时输出（keilkilll.bat 会删除 build artifacts）
-# 该脚本本身保留在版本库中
 
 # ============= CubeMX 附带的 CMSIS：只跟踪构建需要的部分 =============
 # 构建只引用 Drivers/CMSIS/Include 和 Drivers/CMSIS/Device/ST/STM32F4xx/Include
