@@ -31,8 +31,8 @@ void Log_Write(int level, const char *file, int line, const char *fmt, ...)
     va_list args;
     uint16_t len;
 
-    /* 裁剪到工程根：只显示 "OmniCar/..." 及之后的相对路径，隐藏绝对路径前缀 */
-    const char *root = strstr(file, "/OmniCar/");
+    /* 裁剪到固件工程根：隐藏编译机中的绝对路径前缀 */
+    const char *root = strstr(file, "/stm32_proj/");
     if (root != NULL)
     {
         file = root + 1;

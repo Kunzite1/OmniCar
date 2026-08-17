@@ -18,7 +18,7 @@ OmniCar 是全向移动车的 **STM32 下位机**固件。MCU 为 **STM32F407VET
 
 ## 五层架构
 
-应用代码位于 `OmniCar/` 下，分五层。构建时把 `App/`、`BSP/`、`Middleware/`、`Motion/` 四个目录作为 include 根（见「构建」节的 `OMNICAR_LAYER_INCLUDE_DIRS`），模块用相对路径 include，例如 `#include "App/main/app_main.h"`（`main.c` 就是这么写的）：
+应用代码位于 `stm32_proj/` 下，分五层。构建时把 `App/`、`BSP/`、`Middleware/`、`Motion/` 四个目录作为 include 根（见「构建」节的 `OMNICAR_LAYER_INCLUDE_DIRS`），模块用相对路径 include，例如 `#include "App/main/app_main.h"`（`main.c` 就是这么写的）：
 
 - **Core/** —— CubeMX 管理的代码：`main.c`、`gpio.c`、`usart.c`（USART2）、`freertos.c`（RTOS 任务创建）、`stm32f4xx_it.c`、`stm32f4xx_hal_msp.c`、`stm32f4xx_hal_timebase_tim.c`（TIM6 时间基准）、`system_stm32f4xx.c`、`FreeRTOSConfig.h`（RTOS 配置），以及为 GNU 工具链添加的 newlib stub `syscalls.c`/`sysmem.c`。只有 `/* USER CODE BEGIN/END */` 块能在再生成时存活（见下）。
 - **BSP/** —— 板级外设驱动：`led`（板载 LED）、`motor`（520 编码电机，PWM + 方向）、`can`（CAN 收发器 ↔ Linux 上位机）、`encoder`（电机转速反馈）、`uart`（日志打印串口）、`ICM20948`（9 轴 IMU，I2C）。`led` 与 `uart` 已实现（其余仍为 stub）；`uart` 内定义了 `_write` 覆盖 `syscalls.c` 的 weak 实现，使标准 `printf()` 也统一走 USART2。
@@ -38,7 +38,7 @@ OmniCar 是全向移动车的 **STM32 下位机**固件。MCU 为 **STM32F407VET
 
 ### CMake + GCC（主）
 
-CubeMX 生成的 CMake 工程（`cmake_minimum_required 3.22`，C11）。在 `OmniCar/` 下执行（Makefiles 生成器，`build/` 目录已配置好）：
+CubeMX 生成的 CMake 工程（`cmake_minimum_required 3.22`，C11）。在 `stm32_proj/` 下执行（Makefiles 生成器，`build/` 目录已配置好）：
 
 ```
 cmake --build build    # 构建 → build/OmniCar.elf（并生成 .bin/.hex）
@@ -50,27 +50,27 @@ cmake --build build    # 构建 → build/OmniCar.elf（并生成 .bin/.hex）
 - `cmake/stm32cubemx/CMakeLists.txt`（CubeMX 生成）提供源码：Core + `startup_stm32f407xx.s`（根目录的 GCC 启动文件）+ 裁剪后的 HAL 驱动集 + **`FreeRTOS` OBJECT 库**（`FreeRTOS_Src`：`cmsis_os2.c`、`heap_4`、GCC `ARM_CM4F` port 等，v0.4.2 起）。**不要手工改这个文件。**
 - **五层（App/BSP/Middleware/Motion）通过 `CMakeLists.txt` 里的 `OMNICAR_LAYER_SOURCES` / `OMNICAR_LAYER_INCLUDE_DIRS` 接入构建**。include 根为项目根 + 四个层目录——这就是 `#include "App/main/app_main.h"` 能解析的原因。**新增模块必须加进 `OMNICAR_LAYER_SOURCES`**。
 - include 根顺序重要：项目根排最前，保证 `App/...` 风格的路径优先于层目录里 `App/App/...` 双前缀被解析。
-- **烧录/调试用 openocd + ST-Link**（Linux / Windows 通用；Linux 上 `stlink-tools` 的 `st-flash` 有 `libusb_set_option` 符号错误，已损坏，勿用）。`OmniCar/.vscode/` 下有 `tasks.json`（`build`、`flash`、`clean`）和 `launch.json`（cortex-debug + openocd）；VSCode 工作区入口是 `OmniCar/OmniCar.code-workspace`。命令行烧录等价：
+- **烧录/调试用 openocd + ST-Link**（Linux / Windows 通用；Linux 上 `stlink-tools` 的 `st-flash` 有 `libusb_set_option` 符号错误，已损坏，勿用）。`stm32_proj/.vscode/` 下有 `tasks.json`（`build`、`flash`、`clean`）和 `launch.json`（cortex-debug + openocd）；VSCode 工作区入口是 `stm32_proj/OmniCar.code-workspace`。命令行烧录等价：
   `openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program build/OmniCar.elf verify reset exit"`
   CMake 构建默认只产 `build/OmniCar.elf`，`POST_BUILD` 的 objcopy 步骤还会生成 `.bin`/`.hex`。
 - **工作约定：Claude 不执行烧录操作**（openocd program / st-flash / VSCode `flash` 任务一律不代跑），只负责 `cmake --build` 编译与排错；编译通过即交付，烧录由用户手动完成（VSCode `flash` 任务或上述命令行）。
 
 ### Windows 端（CMake + GCC，与 Linux 相同）
 
-Windows 端与 Linux 端共用 `OmniCar/` 下**同一套 CMake 工程**，命令完全一致（见上），无独立构建配置。实测可行的安装路径（v0.6 验证）：
+Windows 端与 Linux 端共用 `stm32_proj/` 下**同一套 CMake 工程**，命令完全一致（见上），无独立构建配置。实测可行的安装路径（v0.6 验证）：
 
 - 装 **MSYS2**（例如 D 盘），在 **UCRT64 终端**里 `pacman -S mingw-w64-ucrt-x86_64-arm-none-eabi-gcc mingw-w64-ucrt-x86_64-cmake make mingw-w64-ucrt-x86_64-openocd`，一次装齐工具链。
 - 把 `<msys>/ucrt64/bin` 与 `<msys>/usr/bin` 加进**用户** PATH（放在最前）。
 - **不要另装 Program Files 的 CMake 4.4+**：其 `-DCMAKE_TOOLCHAIN_FILE=…x.cmake` 会把 `.cmake` 后缀拆掉导致配置失败（PowerShell 下必现，v0.6 实测）。因系统 PATH 优先于用户 PATH，若系统里已有高版本 CMake，卸载或从 PATH 移除（`winget uninstall Kitware.CMake`）。
 - **ST-Link 驱动 STSW-LINK009**（ST 官网）——Windows 特有，**不装则 openocd 认不到 ST-Link**。
 
-PowerShell 命令与 Linux 相同：`cmake -B build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake` → `cmake --build build` → `openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program build/OmniCar.elf verify reset exit"`。VSCode 打开 `OmniCar/OmniCar.code-workspace`，`build`/`flash`/`clean` 任务即用。
+PowerShell 命令与 Linux 相同：`cmake -B build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake` → `cmake --build build` → `openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program build/OmniCar.elf verify reset exit"`。VSCode 打开 `stm32_proj/OmniCar.code-workspace`，`build`/`flash`/`clean` 任务即用。
 
 **µVision 与 EIDE 配置均已删除（v0.6）** —— 不要同步、不要建议使用。他人要用源码请自行配置。
 
 ### 双端开发配置同步（工作约定）
 
-Linux / Windows 共用 `OmniCar/` 下同一份 `CMakeLists.txt`、`.ioc`、`.vscode` 与五层源码，**不存在两套并行构建配置**，因此没有「同步另一端」的动作：
+Linux / Windows 共用 `stm32_proj/` 下同一份 `CMakeLists.txt`、`.ioc`、`.vscode` 与五层源码，**不存在两套并行构建配置**，因此没有「同步另一端」的动作：
 
 - 新增/删除模块源文件 → 只需改 `CMakeLists.txt` 的 `OMNICAR_LAYER_SOURCES`。
 - 修改 `tasks.json` / `launch.json` / 烧录参数 → 两端共用同一份，改动即两端生效。
@@ -79,7 +79,7 @@ Linux / Windows 共用 `OmniCar/` 下同一份 `CMakeLists.txt`、`.ioc`、`.vsc
 
 ## STM32CubeMX 再生成（重要）
 
-- `OmniCar/OmniCar.ioc` 是外设配置的唯一真相。它由 **CubeMX 6.18.1** 和 **STM32Cube FW_F4 V1.28.3** HAL 包生成。当前配置了 GPIO / RCC / **FREERTOS（CMSIS_V2）** / **TIM6（HAL 时间基准）** / **TIM3（电机 PWM）** / USART2（日志串口）/ SWD 调试（PA13/PA14）。
+- `stm32_proj/OmniCar.ioc` 是外设配置的唯一真相。它由 **CubeMX 6.18.1** 和 **STM32Cube FW_F4 V1.28.3** HAL 包生成。当前配置了 GPIO / RCC / **FREERTOS（CMSIS_V2）** / **TIM6（HAL 时间基准）** / **TIM3（电机 PWM）** / USART2（日志串口）/ SWD 调试（PA13/PA14）。
 - `.ioc` 现在是 `ProjectManager.TargetToolchain=CMake`、`ProjectManager.LibraryCopy=1`（HAL 源码拷入工程）。**再生成会还原被裁剪的完整 HAL/CMSIS 源码树**（被删的文件会以修改/未跟踪形式回来 —— 预期行为）。
 - 从 `.ioc` 再生成会**覆盖 CubeMX 管理文件中 `/* USER CODE BEGIN */ … /* USER CODE END */` 块之外的一切**（`main.c`、`gpio.c`、`stm32f4xx_it.c`、`stm32f4xx_hal_msp.c`、`*.h`）。所有用户逻辑必须写在块内。
 - 在 CubeMX 新增外设后，`main()` 中会出现 `MX_<外设>_Init()` 函数且必须调用；头文件在 `main.h`/`main.c` 的 `USER CODE BEGIN Includes` 区域 include。
@@ -88,7 +88,7 @@ Linux / Windows 共用 `OmniCar/` 下同一份 `CMakeLists.txt`、`.ioc`、`.vsc
 
 ## 约定
 
-- 格式化：`.clang-format` 位于 `OmniCar/`（Microsoft 基础，4 空格缩进，Linux 大括号风格，无列宽限制）；IntelliSense 用 C/C++ 扩展读取 `build/compile_commands.json`（见 `OmniCar/.vscode/settings.json`）。
+- 格式化：`.clang-format` 位于 `stm32_proj/`（Microsoft 基础，4 空格缩进，Linux 大括号风格，无列宽限制）；IntelliSense 用 C/C++ 扩展读取 `build/compile_commands.json`（见 `stm32_proj/.vscode/settings.json`）。
 - 注释/提交消息中英文混排 —— 跟着附近内容保持一致。提交消息遵循 `vX.Y：中文描述`（如 `v0.2：迁移到CubeMX HAL工程，搭建五层架构骨架`）。
 - 根目录另有 **`AGENTS.md`**（仓库级规范：构建命令、编码/命名约定、提交与 PR 指南、人工验证要求），与本文件互为补充；两者冲突时以本文件为准。
 - 遇到问题时以本文件为第一参考；Claude 工作时的约束（不代跑烧录、两端共用同一套 CMake、µVision/EIDE 已删除）都在上面写明。
