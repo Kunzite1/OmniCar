@@ -3,7 +3,12 @@
 
 # ============= 构建/输出目录 =============
 # CMake + GCC 构建输出（Linux / Windows 通用）
-/OmniCar/build/
+/stm32_proj/build/
+
+# ROS 2 / colcon 构建输出（只提交 ros2_ws/src 下的源码）
+/ros2_ws/build/
+/ros2_ws/install/
+/ros2_ws/log/
 
 # ============= Office 临时文件 =============
 # Excel / Word / PowerPoint 锁定文件（~ 开头）
@@ -18,16 +23,16 @@
 # 构建只引用 Drivers/CMSIS/Include 和 Drivers/CMSIS/Device/ST/STM32F4xx/Include
 # DSP(912)/NN(102)/Core/Core_A/DAP/RTOS/Source模板 等未参与编译，不入库
 # （需要时可从 STM32Cube FW_F4 包重新生成/恢复）
-/OmniCar/Drivers/CMSIS/*
-!/OmniCar/Drivers/CMSIS/Include/
-!/OmniCar/Drivers/CMSIS/Device/
-/OmniCar/Drivers/CMSIS/Device/*
-!/OmniCar/Drivers/CMSIS/Device/ST/
-/OmniCar/Drivers/CMSIS/Device/ST/*
-!/OmniCar/Drivers/CMSIS/Device/ST/STM32F4xx/
-/OmniCar/Drivers/CMSIS/Device/ST/STM32F4xx/*
-!/OmniCar/Drivers/CMSIS/Device/ST/STM32F4xx/Include/
-!/OmniCar/Drivers/CMSIS/Device/ST/STM32F4xx/LICENSE.txt
+/stm32_proj/Drivers/CMSIS/*
+!/stm32_proj/Drivers/CMSIS/Include/
+!/stm32_proj/Drivers/CMSIS/Device/
+/stm32_proj/Drivers/CMSIS/Device/*
+!/stm32_proj/Drivers/CMSIS/Device/ST/
+/stm32_proj/Drivers/CMSIS/Device/ST/*
+!/stm32_proj/Drivers/CMSIS/Device/ST/STM32F4xx/
+/stm32_proj/Drivers/CMSIS/Device/ST/STM32F4xx/*
+!/stm32_proj/Drivers/CMSIS/Device/ST/STM32F4xx/Include/
+!/stm32_proj/Drivers/CMSIS/Device/ST/STM32F4xx/LICENSE.txt
 
 # ============= 通用 =============
 .DS_Store

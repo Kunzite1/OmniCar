@@ -1,8 +1,22 @@
-# OmniCar 全向移动车（STM32 下位机固件）
+# OmniCar 全向移动车
 
-全向移动车的 **STM32 下位机**固件工程。MCU 为 **STM32F407VET6**（LQFP100，168 MHz），经 **CAN** 与搭载激光雷达的 **Linux 上位机**（RK3562）通信。当前进度：**v0.6（电机调试）**。
+全向移动车的软硬件单仓库，同时管理 **STM32 下位机固件**和 **ROS 2 上位机工作区**。MCU 为 **STM32F407VET6**（LQFP100，168 MHz），经 **CAN** 与搭载激光雷达的 **Linux 上位机**（RK3562）通信。当前进度：**v0.7（电机方向自检）**。
 
 > 面向人类读者的进度/注意/引脚速览。详细架构、构建、CubeMX 再生成规则等见 [`CLAUDE.md`](CLAUDE.md)。
+
+## 仓库结构
+
+```text
+OmniCar/
+├── stm32_proj/       # STM32CubeMX + CMake 固件工程
+├── ros2_ws/
+│   └── src/          # ROS 2 功能包源码
+├── 资料/             # 硬件与 PCB 资料
+├── 引脚分配.md
+└── 采购清单.md
+```
+
+`ros2_ws/src/` 目前为占位目录；`build/`、`install/` 和 `log/` 等 colcon 产物不纳入版本管理。
 
 ## 项目进度
 
@@ -17,6 +31,7 @@
 | v0.5.1      | 定稿电机 / CAN / IMU **引脚分配**（见下）                                               |
 | v0.5.2      | 绘制并下单**模块转接板**（立创 EDA Pro，Gerber 在 `资料/自制转接板资料/`）                           |
 | v0.5.3      | 工具链统一为 **CMake + GCC**（Windows 弃用并删除 EIDE）；CubeMX 配置电机 **TIM3 PWM + 方向 GPIO**，进入电机调试   |
+| v0.7        | 实现 `BSP/motor` 驱动与 `kinematics` 逆解，完成电机方向自检和上板验证                         |
 
 **已实现**：`BSP/led`、`BSP/uart` + `Middleware/log`、FreeRTOS 调度器。**仍为 stub**：`motor` / `can` / `encoder` / `ICM20948` 驱动，`can_protocol` / `kinematics` / `pid` / `attitude` / `controller` / 模式状态机 / 指令处理。
 
@@ -56,7 +71,7 @@
 工具链为 **CMake + GCC**（Linux / Windows 通用），CubeMX 生成 CMake 工程（`.ioc`：`TargetToolchain=CMake`）。Windows 端不再使用 EIDE。
 
 ```sh
-cd OmniCar
+cd stm32_proj
 # 全新检出先配置一次（Makefiles 生成器；Windows 必须显式 -G "Unix Makefiles"，Linux 可省）
 cmake -B build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake
 # 构建 → build/OmniCar.elf/.bin/.hex
@@ -88,11 +103,11 @@ cmake --build build
 openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program build/OmniCar.elf verify reset exit"
 ```
 
-或用 VSCode 打开 `OmniCar/OmniCar.code-workspace`，运行 `build` / `flash` / `clean` 任务（终端 → 运行任务）。µVision 与 EIDE 配置均已删除。
+或用 VSCode 打开 `stm32_proj/OmniCar.code-workspace`，运行 `build` / `flash` / `clean` 任务（终端 → 运行任务）。µVision 与 EIDE 配置均已删除。
 
 ## 注意事项
 
-- **烧录由人工执行**：VSCode `flash` 任务（`OmniCar/`，openocd + ST-Link），或命令行 `openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program build/OmniCar.elf verify reset exit"`。
+- **烧录由人工执行**：VSCode `flash` 任务（`stm32_proj/`，openocd + ST-Link），或命令行 `openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program build/OmniCar.elf verify reset exit"`。
 - **µVision 工程与 EIDE 配置均已删除**——Windows 端与 Linux 共用同一套 CMake + GCC。
 - **CubeMX 再生成**会覆盖 `/* USER CODE BEGIN */ … /* USER CODE END */` 块之外的一切（`main.c`、`gpio.c`、`freertos.c`、`*.h`），用户逻辑必须写在块内。
 - **时间基准**：SysTick 归 FreeRTOS，HAL 的 `HAL_GetTick()`/`HAL_Delay()` 由 TIM6 驱动。
