@@ -4,6 +4,18 @@
 
 > 面向人类读者的进度/注意/引脚速览。详细架构、构建、CubeMX 再生成规则等见 [`CLAUDE.md`](CLAUDE.md)。
 
+## STM32 常用指令
+
+以下命令均在 `stm32_proj/` 目录执行；首次构建前需先完成下文的 CMake 配置。
+
+```sh
+cmake --build build
+openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program build/OmniCar.elf verify reset exit"
+cmake --build build --target clean
+```
+
+依次用于构建固件、通过 ST-Link 烧录并校验，以及清理构建产物。
+
 ## 仓库结构
 
 ```text
@@ -103,7 +115,7 @@ cmake --build build
 openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program build/OmniCar.elf verify reset exit"
 ```
 
-或用 VSCode 打开 `stm32_proj/OmniCar.code-workspace`，运行 `build` / `flash` / `clean` 任务（终端 → 运行任务）。µVision 与 EIDE 配置均已删除。
+或用 VSCode 打开 `stm32_proj/stm32_proj.code-workspace`，运行 `build` / `flash` / `clean` 任务（终端 → 运行任务）。µVision 与 EIDE 配置均已删除。
 
 ## 注意事项
 
