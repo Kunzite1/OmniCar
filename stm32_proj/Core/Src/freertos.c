@@ -26,6 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "App/main/app_main.h"
+#include "App/cmd_handler/app_cmd_handler.h"
 
 /* USER CODE END Includes */
 
@@ -136,6 +137,15 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  /* v0.7.4：CAN 指令处理任务（收帧分发 / echo 应答） */
+  {
+    static const osThreadAttr_t canTask_attributes = {
+      .name = "canTask",
+      .stack_size = 256 * 4,
+      .priority = (osPriority_t) osPriorityNormal,
+    };
+    osThreadNew(App_CmdHandler_Task, NULL, &canTask_attributes);
+  }
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */

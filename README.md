@@ -1,6 +1,6 @@
 # OmniCar 全向移动车
 
-全向移动车的软硬件单仓库，同时管理 **STM32 下位机固件**和 **ROS 2 上位机工作区**。MCU 为 **STM32F407VET6**（LQFP100，168 MHz），经 **CAN** 与搭载激光雷达的 **Linux 上位机**（RK3562）通信。当前进度：**v0.7（电机方向自检）**。
+全向移动车的软硬件单仓库，同时管理 **STM32 下位机固件**和 **ROS 2 上位机工作区**。MCU 为 **STM32F407VET6**（LQFP100，168 MHz），经 **CAN**（500 kbps）与搭载激光雷达的 **Linux 上位机**（KICKPI K1 Mini，RK3568）通信。当前进度：**v0.7.4（CAN 自检代码就绪，硬件链路待验证）**。
 
 > 面向人类读者的进度/注意/引脚速览。详细架构、构建、CubeMX 再生成规则等见 [`CLAUDE.md`](CLAUDE.md)。
 
@@ -16,6 +16,20 @@ cmake --build build --target clean
 
 依次用于构建固件、通过 ST-Link 烧录并校验，以及清理构建产物。
 
+## KICKPI（RK3568）CAN 常用指令
+
+RK3568 SoC 自带 CAN 2.0 控制器，Linux 侧走 SocketCAN（接口名 `can0`/`can1`）。与 STM32 联调（波特率须为 **500 kbps**）：
+
+```sh
+sudo ip link set can0 down
+sudo ip link set can0 type can bitrate 500000
+sudo ip link set can0 up
+candump can0                       # 应每秒看到 101# 心跳（seq 递增）
+cansend can0 2FF#A1B2C3D4          # 发 echo 测试帧，应立刻收到 2FE#A1...
+```
+
+> ⚠️ 实测 K1 Mini 内核已开 `CONFIG_CANFD_ROCKCHIP`，但运行中设备树的三路 CAN 节点均为 `disabled`，因此尚无 `can0/can1`。需在与板卡当前内核匹配的设备树中启用选定的 `&canN` 和正确 pinctrl，详见 `kickpi_sdk/docs/cn/Common/CAN/`。
+
 ## 仓库结构
 
 ```text
@@ -28,7 +42,7 @@ OmniCar/
 └── 采购清单.md
 ```
 
-`ros2_ws/src/` 目前为占位目录；`build/`、`install/` 和 `log/` 等 colcon 产物不纳入版本管理。
+`ros2_ws/` 中的 `build/`、`install/` 和 `log/` 等 colcon 产物不纳入版本管理。
 
 ## 项目进度
 
@@ -44,8 +58,10 @@ OmniCar/
 | v0.5.2      | 绘制并下单**模块转接板**（立创 EDA Pro，Gerber 在 `资料/自制转接板资料/`）                           |
 | v0.5.3      | 工具链统一为 **CMake + GCC**（Windows 弃用并删除 EIDE）；CubeMX 配置电机 **TIM3 PWM + 方向 GPIO**，进入电机调试   |
 | v0.7        | 实现 `BSP/motor` 驱动与 `kinematics` 逆解，完成电机方向自检和上板验证                         |
+| v0.7.1–v0.7.3 | 建立 STM32 与 ROS 2 单仓库结构，新增 ROS 2 测试发布节点                                     |
+| v0.7.4      | 配置 CAN1，实现 `BSP/can` + `can_protocol` + `cmd_handler` 最小自检；完成编译，硬件链路待验证 |
 
-**已实现**：`BSP/led`、`BSP/uart` + `Middleware/log`、FreeRTOS 调度器。**仍为 stub**：`motor` / `can` / `encoder` / `ICM20948` 驱动，`can_protocol` / `kinematics` / `pid` / `attitude` / `controller` / 模式状态机 / 指令处理。
+**已实现**：`BSP/led`、`BSP/uart` + `Middleware/log`、FreeRTOS 调度器、`BSP/motor` + `Motion/kinematics`、`BSP/can` + `Middleware/can_protocol` + `App/cmd_handler`（最小自检代码，尚未上总线验证）。**仍为 stub**：`encoder` / `ICM20948` 驱动，`pid` / `attitude` / `controller` / 模式状态机。
 
 ## 硬件与引脚分配
 
@@ -71,12 +87,12 @@ OmniCar/
 | 电机 3              | PWM       | **PB0**         | TIM3_CH3                    |
 |                   | 编码器 A / B | **PD12 / PD13** | TIM4_CH1 / CH2              |
 |                   | 方向 A / B  | **PD14 / PD15** | GPIO 输出                     |
-| CAN ↔ 上位机（RK3562） | RX / TX   | **PD0 / PD1**   | CAN1（AF9），需外接收发器（如 TJA1050） |
+| CAN ↔ 上位机（KICKPI K1 Mini / RK3568） | RX / TX   | **PD0 / PD1**   | CAN1（AF9），500 kbps，经收发器模块接 CAN 总线 |
 | ICM20948 九轴 IMU   | SCL / SDA | **PB8 / PB9**   | I2C1（AF4）                   |
 
 接线约定：**模块 TX → 单片机 RX，模块 RX → 单片机 TX**。三路电机 PWM 共用 TIM3（CH1/2/3），编码器各用独立定时器。
 
-> ⚠️ **TIM3 PWM + 6 路方向 GPIO 已配置（v0.5.3）**；编码器（TIM1/8/4）、CAN1、I2C1 **尚未在 CubeMX `.ioc` 中配置**——接线时需在 CubeMX 新增。
+> ⚠️ **TIM3 PWM + 6 路方向 GPIO 已配置（v0.5.3）**；**CAN1（PD0/PD1，500 kbps）已配置（v0.7.4）**；编码器（TIM1/8/4）、I2C1 **尚未在 CubeMX `.ioc` 中配置**——接线时需在 CubeMX 新增。
 
 ## 构建
 

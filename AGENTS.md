@@ -31,3 +31,9 @@ There is currently no unit-test framework or CI. Treat a clean firmware cross-co
 ## Commit & Pull Request Guidelines
 
 History uses versioned Chinese subjects such as `v0.4：实现 USART2 日志打印串口与日志分级中间件`; follow `vX.Y[.Z]：简明描述`. Keep commits focused. Pull requests should summarize affected layers, mention CubeMX or dual-toolchain configuration changes, link relevant issues, and list build and hardware-test results. Include logs or screenshots only when they clarify device behavior.
+
+## Human Learning Notes
+
+Maintain `资料/agent汇报.md` alongside substantive repository work, hardware diagnostics, builds, or configuration investigations. Write it in concise Chinese for a human learning embedded development—not as an internal agent log. Each dated entry should state the outcome first, then cover what was done, how it was determined, the commands actually used, verification results, and the next unresolved step.
+
+Group commands by execution environment (development host, K1 Mini, STM32 tools), and explain what important output means instead of pasting full logs. Clearly distinguish read-only inspection from file changes, device configuration, builds, and flashing. Never record passwords, tokens, private keys, or other secrets. Link relevant repository files when useful, avoid repeated background material, and update an existing entry when continuing the same task rather than creating fragmented notes.
