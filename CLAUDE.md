@@ -17,11 +17,11 @@ OmniCar 是全向移动车的**软硬件单仓库**（v0.7.1 起），同时管�
 
 根目录另有 `引脚分配.md`（引脚接线总表，已接线的照实填写，未接线的标「待定」）与 `采购清单.md`。
 
-### 固件进度（当前 v0.7.6）
+### 固件进度（当前 v0.7.7）
 
-v0.2 提交五层架构（Core / BSP / Middleware / Motion / App）；v0.4.2 移植 FreeRTOS（CMSIS-RTOS V2），`App_Loop()` 改由 RTOS 默认任务周期调用；v0.5.x 补 PCB 资料、定稿引脚、绘制转接板；v0.6 统一工具链为 CMake + GCC 并配置 TIM3 PWM；v0.7 实现 `BSP/motor` 驱动与 `Motion/kinematics` 逆解，完成电机方向自检上板验证；v0.7.3 新增 ROS2 测试发布节点；**v0.7.4 配置 CAN1，实现 `BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小自检代码，完成编译但尚未验证物理 CAN 链路**。v0.7.5 上位机 CAN 连接**改用 USB-CAN 模块**（见「上位机 CAN 连接」节），并引入学习工具；固件代码自此未再改动。v0.7.6 自制转接板已焊好，电机 / CAN / IMU 全部按 `引脚分配.md` 接线完成（编码器 TIM1/8/4 与 I2C1 的 CubeMX 配置待 carcontrol 分支推进）。
+v0.2 提交五层架构（Core / BSP / Middleware / Motion / App）；v0.4.2 移植 FreeRTOS（CMSIS-RTOS V2），`App_Loop()` 改由 RTOS 默认任务周期调用；v0.5.x 补 PCB 资料、定稿引脚、绘制转接板；v0.6 统一工具链为 CMake + GCC 并配置 TIM3 PWM；v0.7 实现 `BSP/motor` 驱动与 `Motion/kinematics` 逆解，完成电机方向自检上板验证；v0.7.3 新增 ROS2 测试发布节点；**v0.7.4 配置 CAN1，实现 `BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小自检代码，完成编译但尚未验证物理 CAN 链路**。v0.7.5 上位机 CAN 连接**改用 USB-CAN 模块**（见「上位机 CAN 连接」节），并引入学习工具；固件代码自此未再改动。v0.7.6 自制转接板已焊好，电机 / CAN / IMU 全部按 `引脚分配.md` 接线完成，编码器 TIM1/8/4 与 I2C1 已在 CubeMX 配置（carcontrol 分支）；v0.7.7 实现开环直线自检——`Motion/controller` 轮速→电机映射 + 上电先停 3 s 再向前直行 2 s。
 
-已实现：**`BSP/led`**（v0.3.1）、**`BSP/uart` + `Middleware/log`**（v0.4）、**FreeRTOS 调度器**（v0.4.2）、**`BSP/motor` + `Motion/kinematics`**（v0.7）、**`BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小实现**（v0.7.4，CAN 收发与协议组帧/解析，协议表见 `can_protocol.h` 头注释）。其余模块仍为只声明接口的 stub：`encoder` / `ICM20948` 驱动、`pid` / `attitude` / `controller`、模式状态机。
+已实现：**`BSP/led`**（v0.3.1）、**`BSP/uart` + `Middleware/log`**（v0.4）、**FreeRTOS 调度器**（v0.4.2）、**`BSP/motor` + `Motion/kinematics`**（v0.7）、**`Motion/controller` 轮速→电机映射**（v0.7.7）、**`BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小实现**（v0.7.4，CAN 收发与协议组帧/解析，协议表见 `can_protocol.h` 头注释）。其余模块仍为只声明接口的 stub：`encoder` / `ICM20948` 驱动、`pid` / `attitude`、模式状态机。
 
 当前固件行为（v0.7.4 链路自检）：上电后 `App_Loop()` 以 1 Hz 发心跳帧 0x101（LED 同步翻转），`canTask` 任务阻塞收帧、对 0x2FF 测试帧回 0x2FE echo，电机全程停止（见 `stm32_proj/App/main/app_main.c`）。上位机侧用 `candump can0` / `cansend can0 2FF#A1B2C3D4` 联调（`can0` 为 USB-CAN 模块在 Linux 上的 SocketCAN 接口）；物理链路经 USB-CAN 模块验证中。
 
@@ -33,7 +33,7 @@ v0.2 提交五层架构（Core / BSP / Middleware / Motion / App）；v0.4.2 移
 - 已接线引脚：**PA1 = `boardLED`**（开漏输出带内部上拉，低电平点亮，`Core/Inc/main.h`）；**PA2/PA3 = `USART2_TX/RX`**（AF7，115200 8N1 日志串口）；**PD0/PD1 = CAN1_RX/TX**（AF9，经收发器 + USB-CAN 模块接上位机，见「上位机 CAN 连接」节）。v0.7.6 起自制转接板已焊好，电机 / CAN / IMU 全部按 `引脚分配.md` 接好（见该文档「已接线」节）。
 - v0.6 起 CubeMX 已配置 **TIM3 三路 PWM（PA6/PA7/PB0，CH1/2/3，20 kHz，ARR=4199）+ 6 路方向 GPIO（PE13/14、PA4/5、PD14/15）**。
 - v0.7.4 起 CubeMX 已配置 **CAN1（PD0/PD1，AF9，500 kbps：Prescaler 6 / BS1 11TQ / BS2 2TQ，NVIC 开 CAN1_RX0 中断）**——CAN 位时序基于 APB1 42 MHz；收发器已接至 USB-CAN 模块（v0.7.5 起），待物理链路验收。
-- **接线已全部完成（v0.7.6），但编码器（TIM1/8/4）、IMU I2C1（PB8/PB9）尚未在 `.ioc` 配置**——需在 carcontrol 分支经 CubeMX 新增（配置步骤见该分支计划）。
+- **接线已全部完成（v0.7.6）**；编码器（TIM1/8/4，Encoder Mode TI1&TI2，ARR=0xFFFF）与 IMU I2C1（PB8/PB9，400 kHz Fast Mode）已由 carcontrol 分支在 CubeMX 配置并编译通过（v0.7.7）。
 
 ## 上位机 CAN 连接（v0.7.5 起：USB-CAN 模块）
 
@@ -52,7 +52,7 @@ v0.2 提交五层架构（Core / BSP / Middleware / Motion / App）；v0.4.2 移
 
 - **Core/** —— CubeMX 管理的代码：`main.c`、`gpio.c`、`tim.c`（TIM3/TIM6）、`usart.c`（USART2）、`freertos.c`（RTOS 任务创建）、`stm32f4xx_it.c`、`stm32f4xx_hal_msp.c`、`stm32f4xx_hal_timebase_tim.c`（TIM6 时间基准）、`system_stm32f4xx.c`、`FreeRTOSConfig.h`（RTOS 配置），以及为 GNU 工具链添加的 newlib stub `syscalls.c`/`sysmem.c`。只有 `/* USER CODE BEGIN/END */` 块能在再生成时存活（见下）。
 - **BSP/** —— 板级外设驱动：`led`（板载 LED）、`motor`（520 编码电机，PWM + 方向，已实现）、`can`（CAN1 ↔ Linux 上位机，已实现：过滤器全收 FIFO0、RX0 中断 → FreeRTOS 队列）、`encoder`（电机转速反馈）、`uart`（日志打印串口）、`ICM20948`（9 轴 IMU，I2C）。`uart` 内定义了 `_write` 覆盖 `syscalls.c` 的 weak 实现，使标准 `printf()` 也统一走 USART2。
-- **Middleware/** —— 可复用服务：`log`（日志分级宏——唯一经 `BSP/uart` 驱动串口的模块；输出级别在编译期由 `LOG_LEVEL` 过滤，默认 `LOG_LEVEL_INFO`，低于该级别的 `LOG_*` 调用被编译剔除）、`can_protocol`（与上位机的 CAN 报文组帧/解析，已实现；**协议 ID 表以 `can_protocol.h` 头注释为唯一真相**，类似 `log` 直调 BSP——它经 `BSP/can` 收发）、`ringbuffer`、`math`（向量 / 四元数）。`FreeRTOS/` 空占位（`.gitkeep`）已无意义——真实 RTOS 源码在 CubeMX 的 `Middlewares/Third_Party/FreeRTOS/`（见下）。
+- **Middleware/** —— 可复用服务：`log`（日志分级宏——唯一经 `BSP/uart` 驱动串口的模块；输出级别在编译期由 `LOG_LEVEL` 过滤，默认 `LOG_LEVEL_INFO`，低于该级别的 `LOG_*` 调用被编译剔除）、`can_protocol`（与上位机的 CAN 报文组帧/解析，已实现；**协议 ID 表以 `can_protocol.h` 头注释为唯一真相**，类似 `log` 直调 BSP——它经 `BSP/can` 收发；**改固件行为时记得同步递增 `can_protocol.h` 的 `CANPROTO_FW_VER_*`**——心跳帧上报该版本，当前为 0.7.4，落后仓库版本号属预期）、`ringbuffer`、`math`（向量 / 四元数）。`FreeRTOS/` 空占位（`.gitkeep`）已无意义——真实 RTOS 源码在 CubeMX 的 `Middlewares/Third_Party/FreeRTOS/`（见下）。
 - **Motion/** —— 运动学与控制：`kinematics`（三轮全向逆解：vx, vy, ω → 三轮速，已实现；轮子按 0°/120°/240° 布置，极性随机械安装而定）、`pid`（轮速 PID）、`attitude`（IMU 姿态，互补滤波 / Mahony）、`controller`（指令执行 / 轮速环调度）。
 - **App/** —— 应用逻辑与状态机：`main`（入口）、`mode`（工作模式状态机）、`cmd_handler`（上位机指令处理，已实现最小版本：`App_CmdHandler_Task` 由 `freertos.c` USER CODE 块创建，收帧分发 / echo 应答；速度指令 0x201 待闭环就绪接入）。
 
