@@ -17,9 +17,9 @@ OmniCar 是全向移动车的**软硬件单仓库**（v0.7.1 起），同时管�
 
 根目录另有 `引脚分配.md`（引脚接线总表，已接线的照实填写，未接线的标「待定」）与 `采购清单.md`。
 
-### 固件进度（当前 v0.7.5）
+### 固件进度（当前 v0.7.6）
 
-v0.2 提交五层架构（Core / BSP / Middleware / Motion / App）；v0.4.2 移植 FreeRTOS（CMSIS-RTOS V2），`App_Loop()` 改由 RTOS 默认任务周期调用；v0.5.x 补 PCB 资料、定稿引脚、绘制转接板；v0.6 统一工具链为 CMake + GCC 并配置 TIM3 PWM；v0.7 实现 `BSP/motor` 驱动与 `Motion/kinematics` 逆解，完成电机方向自检上板验证；v0.7.3 新增 ROS2 测试发布节点；**v0.7.4 配置 CAN1，实现 `BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小自检代码，完成编译但尚未验证物理 CAN 链路**。v0.7.5 上位机 CAN 连接**改用 USB-CAN 模块**（见「上位机 CAN 连接」节），并引入学习工具；固件代码自此未再改动。
+v0.2 提交五层架构（Core / BSP / Middleware / Motion / App）；v0.4.2 移植 FreeRTOS（CMSIS-RTOS V2），`App_Loop()` 改由 RTOS 默认任务周期调用；v0.5.x 补 PCB 资料、定稿引脚、绘制转接板；v0.6 统一工具链为 CMake + GCC 并配置 TIM3 PWM；v0.7 实现 `BSP/motor` 驱动与 `Motion/kinematics` 逆解，完成电机方向自检上板验证；v0.7.3 新增 ROS2 测试发布节点；**v0.7.4 配置 CAN1，实现 `BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小自检代码，完成编译但尚未验证物理 CAN 链路**。v0.7.5 上位机 CAN 连接**改用 USB-CAN 模块**（见「上位机 CAN 连接」节），并引入学习工具；固件代码自此未再改动。v0.7.6 自制转接板已焊好，电机 / CAN / IMU 全部按 `引脚分配.md` 接线完成（编码器 TIM1/8/4 与 I2C1 的 CubeMX 配置待 carcontrol 分支推进）。
 
 已实现：**`BSP/led`**（v0.3.1）、**`BSP/uart` + `Middleware/log`**（v0.4）、**FreeRTOS 调度器**（v0.4.2）、**`BSP/motor` + `Motion/kinematics`**（v0.7）、**`BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小实现**（v0.7.4，CAN 收发与协议组帧/解析，协议表见 `can_protocol.h` 头注释）。其余模块仍为只声明接口的 stub：`encoder` / `ICM20948` 驱动、`pid` / `attitude` / `controller`、模式状态机。
 
@@ -30,10 +30,10 @@ v0.2 提交五层架构（Core / BSP / Middleware / Motion / App）；v0.4.2 移
 - MCU：STM32F407VETx，LQFP100。
 - HSE 8 MHz → PLL（M=8, N=336, P=2）→ **168 MHz SYSCLK**；APB1 = 42 MHz，APB2 = 84 MHz（见 `stm32_proj/Core/Src/main.c` 的 `SystemClock_Config()`）。
 - **时间基准（v0.4.2 起）：SysTick 归 FreeRTOS，HAL 的 `HAL_GetTick()`/`HAL_Delay()` 改由 TIM6 驱动** —— `stm32_proj/Core/Src/stm32f4xx_hal_timebase_tim.c` 提供 `HAL_InitTick` 实现，`main.c` 的 `HAL_TIM_PeriodElapsedCallback()` 里对 TIM6 调 `HAL_IncTick()`。`Middleware/log` 时间戳仍取 `HAL_GetTick()`。
-- 已接线引脚：**PA1 = `boardLED`**（开漏输出带内部上拉，低电平点亮，`Core/Inc/main.h`）；**PA2/PA3 = `USART2_TX/RX`**（AF7，115200 8N1 日志串口）；**PD0/PD1 = CAN1_RX/TX**（AF9，经收发器 + USB-CAN 模块接上位机，见「上位机 CAN 连接」节）。
+- 已接线引脚：**PA1 = `boardLED`**（开漏输出带内部上拉，低电平点亮，`Core/Inc/main.h`）；**PA2/PA3 = `USART2_TX/RX`**（AF7，115200 8N1 日志串口）；**PD0/PD1 = CAN1_RX/TX**（AF9，经收发器 + USB-CAN 模块接上位机，见「上位机 CAN 连接」节）。v0.7.6 起自制转接板已焊好，电机 / CAN / IMU 全部按 `引脚分配.md` 接好（见该文档「已接线」节）。
 - v0.6 起 CubeMX 已配置 **TIM3 三路 PWM（PA6/PA7/PB0，CH1/2/3，20 kHz，ARR=4199）+ 6 路方向 GPIO（PE13/14、PA4/5、PD14/15）**。
 - v0.7.4 起 CubeMX 已配置 **CAN1（PD0/PD1，AF9，500 kbps：Prescaler 6 / BS1 11TQ / BS2 2TQ，NVIC 开 CAN1_RX0 中断）**——CAN 位时序基于 APB1 42 MHz；收发器已接至 USB-CAN 模块（v0.7.5 起），待物理链路验收。
-- **尚未在 `.ioc` 配置**：编码器（TIM1/8/4）、IMU I2C1（PB8/PB9）——接线时需在 CubeMX 中新增。完整规划见 `引脚分配.md`「待接线」节。
+- **接线已全部完成（v0.7.6），但编码器（TIM1/8/4）、IMU I2C1（PB8/PB9）尚未在 `.ioc` 配置**——需在 carcontrol 分支经 CubeMX 新增（配置步骤见该分支计划）。
 
 ## 上位机 CAN 连接（v0.7.5 起：USB-CAN 模块）
 

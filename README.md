@@ -1,6 +1,6 @@
 # OmniCar 全向移动车
 
-全向移动车的软硬件单仓库，同时管理 **STM32 下位机固件**和 **ROS 2 上位机工作区**。MCU 为 **STM32F407VET6**（LQFP100，168 MHz），经 **CAN**（500 kbps）与搭载激光雷达的 **Linux 上位机**（KICKPI K1 Mini，RK3568）通信。当前进度：**v0.7.5（CAN 自检就绪，上位机改用 USB-CAN 模块连接，进入 SocketCAN 联调）**。
+全向移动车的软硬件单仓库，同时管理 **STM32 下位机固件**和 **ROS 2 上位机工作区**。MCU 为 **STM32F407VET6**（LQFP100，168 MHz），经 **CAN**（500 kbps）与搭载激光雷达的 **Linux 上位机**（KICKPI K1 Mini，RK3568）通信。当前进度：**v0.7.6（转接板已焊好，电机/CAN/IMU 全部按 `引脚分配.md` 接线完成，进入 carcontrol 运控实现）**。
 
 > 面向人类读者的进度/注意/引脚速览。详细架构、构建、CubeMX 再生成规则等见 [`CLAUDE.md`](CLAUDE.md)。
 
@@ -61,6 +61,7 @@ OmniCar/
 | v0.7.1–v0.7.3 | 建立 STM32 与 ROS 2 单仓库结构，新增 ROS 2 测试发布节点                                     |
 | v0.7.4      | 配置 CAN1，实现 `BSP/can` + `can_protocol` + `cmd_handler` 最小自检；完成编译，硬件链路待验证 |
 | v0.7.5      | 上位机改用 **USB-CAN 模块**（撤销 SOC 板卡设备树 CAN 方案）；引入学习工具（`.claude/skills/learn-anything-*`、`.learn/topics/` 知识地图） |
+| v0.7.6      | 自制转接板已焊好，电机 / CAN / IMU 全部按 `引脚分配.md` 接线完成 |
 
 **已实现**：`BSP/led`、`BSP/uart` + `Middleware/log`、FreeRTOS 调度器、`BSP/motor` + `Motion/kinematics`、`BSP/can` + `Middleware/can_protocol` + `App/cmd_handler`（最小自检代码，经 USB-CAN 模块上总线验证中）。**仍为 stub**：`encoder` / `ICM20948` 驱动，`pid` / `attitude` / `controller` / 模式状态机。
 
@@ -75,7 +76,9 @@ OmniCar/
 | 板载 LED          | PA1       | `boardLED`（开漏输出）          | 低电平点亮                 |
 | 日志串口（USB 转 TTL） | PA2 / PA3 | `USART2_TX` / `USART2_RX` | **115200** 8N1，无流控，共地 |
 
-### 待接线（规划已定，v0.5.1 定稿）
+### 已接线（转接板，2026-08-20 全部接好）
+
+> 2026-08-20 自制转接板已焊好，下列电机 / CAN / IMU 全部按表接线完成；电机方向极性、编码器计数方向、IMU 读写待上板核验。编码器（TIM1/8/4）与 I2C1 尚未在 CubeMX `.ioc` 配置（固件侧工作，见 carcontrol 分支计划）。
 
 | 模块                | 功能        | MCU 引脚          | 复用/资源                       |
 | ----------------- | --------- | --------------- | --------------------------- |
@@ -93,7 +96,7 @@ OmniCar/
 
 接线约定：**模块 TX → 单片机 RX，模块 RX → 单片机 TX**。三路电机 PWM 共用 TIM3（CH1/2/3），编码器各用独立定时器。
 
-> ⚠️ **TIM3 PWM + 6 路方向 GPIO 已配置（v0.5.3）**；**CAN1（PD0/PD1，500 kbps）已配置（v0.7.4）**；编码器（TIM1/8/4）、I2C1 **尚未在 CubeMX `.ioc` 中配置**——接线时需在 CubeMX 新增。
+> ⚠️ **TIM3 PWM + 6 路方向 GPIO 已配置（v0.5.3）**；**CAN1（PD0/PD1，500 kbps）已配置（v0.7.4）**；接线已全部完成（v0.7.6），但编码器（TIM1/8/4）、I2C1 **尚未在 CubeMX `.ioc` 中配置**——配置步骤见 carcontrol 分支计划。
 
 ## 构建
 
