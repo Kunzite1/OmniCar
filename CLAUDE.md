@@ -7,32 +7,44 @@
 OmniCar 是全向移动车的**软硬件单仓库**（v0.7.1 起），同时管理两部分：
 
 - **`stm32_proj/`** —— STM32 下位机固件。MCU 为 **STM32F407VET6**（LQFP100），通过 CAN 与上位机通信。
-- **`ros2_ws/`** —— Linux 上位机的 ROS 2 工作区（上位机板卡为 **KICKPI K1 Mini（RK3568）**，见 `采购清单.md`，搭载激光雷达；RK3568 SoC 自带 3 路 CAN 2.0 控制器，Linux 侧走 SocketCAN）。
+- **`ros2_ws/`** —— Linux 上位机的 ROS 2 工作区（上位机板卡为 **KICKPI K1 Mini（RK3568）**，见 `采购清单.md`，搭载激光雷达；上位机经 **USB-CAN 模块** 接 CAN 总线，Linux 侧走 SocketCAN）。
 
-另有两个特殊目录：
+另有三个特殊目录：
 
 - **`资料/`** —— 硬件资料。核心板资料在 `资料/STM32F407VET6核心板资料/`（原理图 PDF、PCB 制版图、Altium 设计文件 `STM32_F4VX_M.PrjPcb` 及封装定位图）；模块转接板资料在 `资料/自制转接板资料/`（立创 EDA Pro 工程 `ProPrj_OmniCar转接板_*.epro2`、Gerber `Gerber_PCB1_*.zip`、原理图 PNG）。
-- **`kickpi_sdk/`** —— RK3568 板卡的 KICKPI/Rockchip Linux SDK，**仅供查阅，已被 `.gitignore` 排除**，不要提交、不要改动其中内容。
+- **`kickpi_sdk/`** —— RK3568 板卡的 KICKPI/Rockchip Linux SDK，**仅供查阅，已被 `.gitignore` 排除**，不要提交、不要改动其中内容。注意其内核为 **6.1.141**，与板卡运行内核 **5.10.160** 不一致，SDK 产物（内核/DTB/模块）不可直接混入板卡系统。
+- **`docker/`** —— 板卡端 ROS Humble 容器方案（K1 Mini 官方仅提供 Ubuntu 20.04 镜像，需在板卡跑 `ros:humble-ros-base` 容器；PC 端内核编译容器未定），见 `docker/readme.md`。
 
 根目录另有 `引脚分配.md`（引脚接线总表，已接线的照实填写，未接线的标「待定」）与 `采购清单.md`。
 
-### 固件进度（当前 v0.7.4）
+### 固件进度（当前 v0.7.5）
 
-v0.2 提交五层架构（Core / BSP / Middleware / Motion / App）；v0.4.2 移植 FreeRTOS（CMSIS-RTOS V2），`App_Loop()` 改由 RTOS 默认任务周期调用；v0.5.x 补 PCB 资料、定稿引脚、绘制转接板；v0.6 统一工具链为 CMake + GCC 并配置 TIM3 PWM；v0.7 实现 `BSP/motor` 驱动与 `Motion/kinematics` 逆解，完成电机方向自检上板验证；v0.7.3 新增 ROS2 测试发布节点；**v0.7.4 配置 CAN1，实现 `BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小自检代码，完成编译但尚未验证物理 CAN 链路**。
+v0.2 提交五层架构（Core / BSP / Middleware / Motion / App）；v0.4.2 移植 FreeRTOS（CMSIS-RTOS V2），`App_Loop()` 改由 RTOS 默认任务周期调用；v0.5.x 补 PCB 资料、定稿引脚、绘制转接板；v0.6 统一工具链为 CMake + GCC 并配置 TIM3 PWM；v0.7 实现 `BSP/motor` 驱动与 `Motion/kinematics` 逆解，完成电机方向自检上板验证；v0.7.3 新增 ROS2 测试发布节点；**v0.7.4 配置 CAN1，实现 `BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小自检代码，完成编译但尚未验证物理 CAN 链路**。v0.7.5 上位机 CAN 连接**改用 USB-CAN 模块**（见「上位机 CAN 连接」节），并引入学习工具；固件代码自此未再改动。
 
 已实现：**`BSP/led`**（v0.3.1）、**`BSP/uart` + `Middleware/log`**（v0.4）、**FreeRTOS 调度器**（v0.4.2）、**`BSP/motor` + `Motion/kinematics`**（v0.7）、**`BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小实现**（v0.7.4，CAN 收发与协议组帧/解析，协议表见 `can_protocol.h` 头注释）。其余模块仍为只声明接口的 stub：`encoder` / `ICM20948` 驱动、`pid` / `attitude` / `controller`、模式状态机。
 
-当前固件行为（v0.7.4 链路自检）：上电后 `App_Loop()` 以 1 Hz 发心跳帧 0x101（LED 同步翻转），`canTask` 任务阻塞收帧、对 0x2FF 测试帧回 0x2FE echo，电机全程停止（见 `stm32_proj/App/main/app_main.c`）。上位机侧用 `candump can0` / `cansend can0 2FF#A1B2C3D4` 联调；这些行为尚未做物理总线验收。
+当前固件行为（v0.7.4 链路自检）：上电后 `App_Loop()` 以 1 Hz 发心跳帧 0x101（LED 同步翻转），`canTask` 任务阻塞收帧、对 0x2FF 测试帧回 0x2FE echo，电机全程停止（见 `stm32_proj/App/main/app_main.c`）。上位机侧用 `candump can0` / `cansend can0 2FF#A1B2C3D4` 联调（`can0` 为 USB-CAN 模块在 Linux 上的 SocketCAN 接口）；物理链路经 USB-CAN 模块验证中。
 
 ## 硬件 / 时钟 / 引脚
 
 - MCU：STM32F407VETx，LQFP100。
 - HSE 8 MHz → PLL（M=8, N=336, P=2）→ **168 MHz SYSCLK**；APB1 = 42 MHz，APB2 = 84 MHz（见 `stm32_proj/Core/Src/main.c` 的 `SystemClock_Config()`）。
 - **时间基准（v0.4.2 起）：SysTick 归 FreeRTOS，HAL 的 `HAL_GetTick()`/`HAL_Delay()` 改由 TIM6 驱动** —— `stm32_proj/Core/Src/stm32f4xx_hal_timebase_tim.c` 提供 `HAL_InitTick` 实现，`main.c` 的 `HAL_TIM_PeriodElapsedCallback()` 里对 TIM6 调 `HAL_IncTick()`。`Middleware/log` 时间戳仍取 `HAL_GetTick()`。
-- 已接线引脚：**PA1 = `boardLED`**（开漏输出带内部上拉，低电平点亮，`Core/Inc/main.h`）；**PA2/PA3 = `USART2_TX/RX`**（AF7，115200 8N1 日志串口）。
+- 已接线引脚：**PA1 = `boardLED`**（开漏输出带内部上拉，低电平点亮，`Core/Inc/main.h`）；**PA2/PA3 = `USART2_TX/RX`**（AF7，115200 8N1 日志串口）；**PD0/PD1 = CAN1_RX/TX**（AF9，经收发器 + USB-CAN 模块接上位机，见「上位机 CAN 连接」节）。
 - v0.6 起 CubeMX 已配置 **TIM3 三路 PWM（PA6/PA7/PB0，CH1/2/3，20 kHz，ARR=4199）+ 6 路方向 GPIO（PE13/14、PA4/5、PD14/15）**。
-- v0.7.4 起 CubeMX 已配置 **CAN1（PD0/PD1，AF9，500 kbps：Prescaler 6 / BS1 11TQ / BS2 2TQ，NVIC 开 CAN1_RX0 中断）**——收发器模块接线待完成；CAN 位时序基于 APB1 42 MHz。
+- v0.7.4 起 CubeMX 已配置 **CAN1（PD0/PD1，AF9，500 kbps：Prescaler 6 / BS1 11TQ / BS2 2TQ，NVIC 开 CAN1_RX0 中断）**——CAN 位时序基于 APB1 42 MHz；收发器已接至 USB-CAN 模块（v0.7.5 起），待物理链路验收。
 - **尚未在 `.ioc` 配置**：编码器（TIM1/8/4）、IMU I2C1（PB8/PB9）——接线时需在 CubeMX 中新增。完整规划见 `引脚分配.md`「待接线」节。
+
+## 上位机 CAN 连接（v0.7.5 起：USB-CAN 模块）
+
+上位机不再使用 SOC 板卡内置 CAN 控制器（RK3568 三路 CAN 需设备树引脚复用，方案已撤销）。CAN 链路：**STM32 CAN1（PD0/PD1，500 kbps）→ CAN 收发器 → CAN_H/CAN_L → USB-CAN 模块 → USB → K1 Mini**，Linux 侧以 SocketCAN 接口（如 `can0`）呈现，联调命令不变（`ip link set can0 ... bitrate 500000`、`candump can0`、`cansend can0 2FF#A1B2C3D4`）。K1 Mini 40Pin 3/5 不再占用（I2C3 恢复默认）。
+
+- USB-CAN 模块型号/驱动待定（常见方案：`gs_usb` 驱动的 CANable 类，或 `slcan` 串口转 CAN）；确定后在 `采购清单.md` 补记。
+- STM32 曾在无 ACK 节点下运行，CAN 接口起来后需**重启 STM32** 再验收（避免停留在 Bus-Off）。
+
+## 学习工具（v0.7.5 引入）
+
+仓库内置学习技能 `.claude/skills/learn-anything-*` 与 `/learn <topic>` 命令（`.claude/commands/learn/`），知识地图与进度存于 `.learn/topics/<topic>/`。已建主题：**`rk3568-k1mini-can-enable`**（K1 Mini CAN 全链路心智模型；其中设备树启用部分已随方案撤销而过时，可用 `/learn` 更新）。`.codex/skills/` 为 Codex 侧同源镜像，改动一处需同步。
 
 ## 五层架构（stm32_proj/）
 
