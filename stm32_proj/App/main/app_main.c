@@ -4,6 +4,7 @@
   * @brief   业务层入口（初始化 / 主循环）
   *          v0.7.4：CAN 链路自检——1 Hz 心跳 + echo 应答，电机保持停止
   *          v0.7.7：上电开环直线自检——先停 3 s，向前直行 2 s 后停止
+  *          v0.7.8：改为自转自检——先停 3 s，顺时针自转 2 s、逆时针自转 2 s
   ******************************************************************************
   */
 #include "App/main/app_main.h"
@@ -24,28 +25,35 @@
 /* 心跳序号（u8 自然回绕） */
 static uint8_t s_heartbeat_seq = 0U;
 
-/* 上电直线自检是否已执行（每上电只跑一次） */
-static bool s_straight_test_done = false;
+/* 上电运动自检是否已执行（每上电只跑一次） */
+static bool s_motion_test_done = false;
 
 /**
-  * @brief 开环直线自检：先停 3 s 待车放稳，再向前直行 2 s，随后停止
-  * @note  vx=1 经运动学逆解 → 电机 2/3 反向驱动、电机 1 停止，
-  *        用于验证方向极性与运动学链路；跑完后永久停止。
+  * @brief 开环自转自检：先停 3 s 待车放稳，顺时针自转 2 s，逆时针自转 2 s，随后停止
+  * @note  w<0 顺时针、w>0 逆时针（运动学约定）；w=±1 → 三轮同速 20% 占空比原地自转。
+  *        若实际转向与命令相反，交换两个 w 的符号。
   */
-static void App_StraightLineTest(void)
+static void App_SpinSelfTest(void)
 {
     float wheel[3];
 
-    LOG_INFO("straight test: wait 3s");
+    LOG_INFO("spin test: wait 3s");
     osDelay(3000U);
 
-    LOG_INFO("straight test: drive forward 2s");
-    Kinematics_Inverse(1.0f, 0.0f, 0.0f, wheel);
+    /* 顺时针自转 2 s（w 为负） */
+    LOG_INFO("spin test: CW 2s");
+    Kinematics_Inverse(0.0f, 0.0f, -1.0f, wheel);
+    Controller_SetWheelSpeeds(wheel);
+    osDelay(2000U);
+
+    /* 逆时针自转 2 s（w 为正） */
+    LOG_INFO("spin test: CCW 2s");
+    Kinematics_Inverse(0.0f, 0.0f, 1.0f, wheel);
     Controller_SetWheelSpeeds(wheel);
     osDelay(2000U);
 
     BSP_Motor_StopAll();
-    LOG_INFO("straight test: stopped");
+    LOG_INFO("spin test: stopped");
 }
 
 /**
@@ -71,11 +79,11 @@ void App_Loop(void)
 {
     BSP_LED_Toggle();
 
-    /* 上电直线自检：只跑一次（先停 3 s，直行 2 s 后停） */
-    if (!s_straight_test_done)
+    /* 上电运动自检：只跑一次（先停 3 s，顺时针/逆时针自转各 2 s） */
+    if (!s_motion_test_done)
     {
-        s_straight_test_done = true;
-        App_StraightLineTest();
+        s_motion_test_done = true;
+        App_SpinSelfTest();
     }
 
     CanProto_SendHeartbeat(s_heartbeat_seq++);

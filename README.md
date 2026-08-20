@@ -1,6 +1,6 @@
 # OmniCar 全向移动车
 
-全向移动车的软硬件单仓库，同时管理 **STM32 下位机固件**和 **ROS 2 上位机工作区**。MCU 为 **STM32F407VET6**（LQFP100，168 MHz），经 **CAN**（500 kbps）与搭载激光雷达的 **Linux 上位机**（KICKPI K1 Mini，RK3568）通信。当前进度：**v0.7.7（编码器/I2C1 已 CubeMX 配置；上电开环直线自检：先停 3 s 直行 2 s）**。
+全向移动车的软硬件单仓库，同时管理 **STM32 下位机固件**和 **ROS 2 上位机工作区**。MCU 为 **STM32F407VET6**（LQFP100，168 MHz），经 **CAN**（500 kbps）与搭载激光雷达的 **Linux 上位机**（KICKPI K1 Mini，RK3568）通信。当前进度：**v0.7.8（上电自转自检：停 3 s 后顺时针/逆时针自转各 2 s）**。
 
 > 面向人类读者的进度/注意/引脚速览。详细架构、构建、CubeMX 再生成规则等见 [`CLAUDE.md`](CLAUDE.md)。
 
@@ -63,6 +63,7 @@ OmniCar/
 | v0.7.5      | 上位机改用 **USB-CAN 模块**（撤销 SOC 板卡设备树 CAN 方案）；引入学习工具（`.claude/skills/learn-anything-*`、`.learn/topics/` 知识地图） |
 | v0.7.6      | 自制转接板已焊好，电机 / CAN / IMU 全部按 `引脚分配.md` 接线完成 |
 | v0.7.7      | 编码器（TIM1/8/4）与 I2C1 于 CubeMX 配置；实现开环直线自检（`Motion/controller` 轮速→电机映射，上电停 3 s 直行 2 s） |
+| v0.7.8      | 自检改为自转：上电停 3 s 后顺时针自转 2 s、逆时针自转 2 s |
 
 **已实现**：`BSP/led`、`BSP/uart` + `Middleware/log`、FreeRTOS 调度器、`BSP/motor` + `Motion/kinematics`、`Motion/controller`（轮速→电机映射）、`BSP/can` + `Middleware/can_protocol` + `App/cmd_handler`（最小自检代码，经 USB-CAN 模块上总线验证中）。**仍为 stub**：`encoder` / `ICM20948` 驱动，`pid` / `attitude` / 模式状态机。
 

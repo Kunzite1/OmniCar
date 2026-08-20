@@ -17,13 +17,13 @@ OmniCar 是全向移动车的**软硬件单仓库**（v0.7.1 起），同时管�
 
 根目录另有 `引脚分配.md`（引脚接线总表，已接线的照实填写，未接线的标「待定」）与 `采购清单.md`。
 
-### 固件进度（当前 v0.7.7）
+### 固件进度（当前 v0.7.8）
 
-v0.2 提交五层架构（Core / BSP / Middleware / Motion / App）；v0.4.2 移植 FreeRTOS（CMSIS-RTOS V2），`App_Loop()` 改由 RTOS 默认任务周期调用；v0.5.x 补 PCB 资料、定稿引脚、绘制转接板；v0.6 统一工具链为 CMake + GCC 并配置 TIM3 PWM；v0.7 实现 `BSP/motor` 驱动与 `Motion/kinematics` 逆解，完成电机方向自检上板验证；v0.7.3 新增 ROS2 测试发布节点；**v0.7.4 配置 CAN1，实现 `BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小自检代码，完成编译但尚未验证物理 CAN 链路**。v0.7.5 上位机 CAN 连接**改用 USB-CAN 模块**（见「上位机 CAN 连接」节），并引入学习工具；固件代码自此未再改动。v0.7.6 自制转接板已焊好，电机 / CAN / IMU 全部按 `引脚分配.md` 接线完成，编码器 TIM1/8/4 与 I2C1 已在 CubeMX 配置（carcontrol 分支）；v0.7.7 实现开环直线自检——`Motion/controller` 轮速→电机映射 + 上电先停 3 s 再向前直行 2 s。
+v0.2 提交五层架构（Core / BSP / Middleware / Motion / App）；v0.4.2 移植 FreeRTOS（CMSIS-RTOS V2），`App_Loop()` 改由 RTOS 默认任务周期调用；v0.5.x 补 PCB 资料、定稿引脚、绘制转接板；v0.6 统一工具链为 CMake + GCC 并配置 TIM3 PWM；v0.7 实现 `BSP/motor` 驱动与 `Motion/kinematics` 逆解，完成电机方向自检上板验证；v0.7.3 新增 ROS2 测试发布节点；**v0.7.4 配置 CAN1，实现 `BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小自检代码，完成编译但尚未验证物理 CAN 链路**。v0.7.5 上位机 CAN 连接**改用 USB-CAN 模块**（见「上位机 CAN 连接」节），并引入学习工具；固件代码自此未再改动。v0.7.6 自制转接板已焊好，电机 / CAN / IMU 全部按 `引脚分配.md` 接线完成，编码器 TIM1/8/4 与 I2C1 已在 CubeMX 配置（carcontrol 分支）；v0.7.7 实现开环直线自检——`Motion/controller` 轮速→电机映射 + 上电先停 3 s 再向前直行 2 s；v0.7.8 自检改为自转——上电先停 3 s，顺时针自转 2 s、逆时针自转 2 s。
 
 已实现：**`BSP/led`**（v0.3.1）、**`BSP/uart` + `Middleware/log`**（v0.4）、**FreeRTOS 调度器**（v0.4.2）、**`BSP/motor` + `Motion/kinematics`**（v0.7）、**`Motion/controller` 轮速→电机映射**（v0.7.7）、**`BSP/can` + `Middleware/can_protocol` + `App/cmd_handler` 最小实现**（v0.7.4，CAN 收发与协议组帧/解析，协议表见 `can_protocol.h` 头注释）。其余模块仍为只声明接口的 stub：`encoder` / `ICM20948` 驱动、`pid` / `attitude`、模式状态机。
 
-当前固件行为（v0.7.4 链路自检）：上电后 `App_Loop()` 以 1 Hz 发心跳帧 0x101（LED 同步翻转），`canTask` 任务阻塞收帧、对 0x2FF 测试帧回 0x2FE echo，电机全程停止（见 `stm32_proj/App/main/app_main.c`）。上位机侧用 `candump can0` / `cansend can0 2FF#A1B2C3D4` 联调（`can0` 为 USB-CAN 模块在 Linux 上的 SocketCAN 接口）；物理链路经 USB-CAN 模块验证中。
+当前固件行为：CAN 链路自检（v0.7.4）——上电后 `App_Loop()` 以 1 Hz 发心跳帧 0x101（LED 同步翻转），`canTask` 任务阻塞收帧、对 0x2FF 测试帧回 0x2FE echo；上电运动自检（v0.7.8）——`App_Loop()` 首帧执行：先停 3 s，顺时针自转 2 s、逆时针自转 2 s，随后永久停止（见 `stm32_proj/App/main/app_main.c`）。上位机侧用 `candump can0` / `cansend can0 2FF#A1B2C3D4` 联调（`can0` 为 USB-CAN 模块在 Linux 上的 SocketCAN 接口）；物理链路经 USB-CAN 模块验证中。
 
 ## 硬件 / 时钟 / 引脚
 
