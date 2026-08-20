@@ -30,8 +30,8 @@ static bool s_motion_test_done = false;
 
 /**
   * @brief 开环自转自检：先停 3 s 待车放稳，顺时针自转 2 s，逆时针自转 2 s，随后停止
-  * @note  w<0 顺时针、w>0 逆时针（运动学约定）；w=±1 → 三轮同速 20% 占空比原地自转。
-  *        若实际转向与命令相反，交换两个 w 的符号。
+  * @note  w<0 顺时针、w>0 逆时针（运动学约定）；R=0.110 下 w=±9.09 rad/s
+  *        → 三轮速 ≈ ±1.0 m/s（约 20% 占空比）。若实际转向与命令相反，交换两个 w 的符号。
   */
 static void App_SpinSelfTest(void)
 {
@@ -40,15 +40,15 @@ static void App_SpinSelfTest(void)
     LOG_INFO("spin test: wait 3s");
     osDelay(3000U);
 
-    /* 顺时针自转 2 s（w 为负） */
+    /* 顺时针自转 2 s：w = -9.09 rad/s（≈ 86 rpm，三轮速 ≈ -1.0 m/s） */
     LOG_INFO("spin test: CW 2s");
-    Kinematics_Inverse(0.0f, 0.0f, -1.0f, wheel);
+    Kinematics_Inverse(0.0f, 0.0f, -9.09f, wheel);
     Controller_SetWheelSpeeds(wheel);
     osDelay(2000U);
 
-    /* 逆时针自转 2 s（w 为正） */
+    /* 逆时针自转 2 s：w = +9.09 rad/s */
     LOG_INFO("spin test: CCW 2s");
-    Kinematics_Inverse(0.0f, 0.0f, 1.0f, wheel);
+    Kinematics_Inverse(0.0f, 0.0f, 9.09f, wheel);
     Controller_SetWheelSpeeds(wheel);
     osDelay(2000U);
 
