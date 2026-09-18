@@ -1,0 +1,6 @@
+C:/Users/admin/Documents/OmniCar/stm32f103rct6_proj/build/Debug/CMakeFiles/stm32f103rct6_proj.dir
+C:/Users/admin/Documents/OmniCar/stm32f103rct6_proj/build/Debug/CMakeFiles/edit_cache.dir
+C:/Users/admin/Documents/OmniCar/stm32f103rct6_proj/build/Debug/CMakeFiles/rebuild_cache.dir
+C:/Users/admin/Documents/OmniCar/stm32f103rct6_proj/build/Debug/cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir
+C:/Users/admin/Documents/OmniCar/stm32f103rct6_proj/build/Debug/cmake/stm32cubemx/CMakeFiles/edit_cache.dir
+C:/Users/admin/Documents/OmniCar/stm32f103rct6_proj/build/Debug/cmake/stm32cubemx/CMakeFiles/rebuild_cache.dir
