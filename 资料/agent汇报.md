@@ -52,3 +52,38 @@ cd /c/Users/admin/Documents/OmniCar/stm32f103rct6_proj
 3. CAN 工作时不要插 Type-C；接好 CAN 总线终端电阻后验证 0x101 心跳和 0x2FF/0x2FE echo。
 4. 上板运行一段时间后读取 FreeRTOS high-water mark，再决定是否调整 16 KB heap 和任务栈。
 5. 后续提交继续保持 `stm32f103rct6_proj/build/` 不进入版本控制。
+
+## 2026-09-20：README 分层整理
+
+结论：根 README 已收敛为项目概述和导航；STM32F103RCT6、ROS 2 与旧 STM32F407 工程分别维护自己的详细 README。旧 F407 工程已明确标记为“暂时废弃”，当前不删除，待 F103 完成关键外设上板验收后再归档并从主开发线移除。
+
+### 做了什么
+
+- 重写根目录 [README.md](../README.md)，只保留系统定位、子工程入口、通信关系和资料导航。
+- 新增 [F103 固件 README](../stm32f103rct6_proj/README.md)，记录实际引脚、Git Bash 构建、OpenOCD 烧录、FreeRTOS、CubeMX 和 Type-C 冲突等注意事项。
+- 新增 [ROS 2 工作区 README](../ros2_ws/README.md)，记录现有测试包、colcon 构建测试和 SocketCAN 联调方式。
+- 新增 [旧 F407 工程 README](../stm32_proj/README.md)，明确该工程暂时废弃，仅用于迁移对照和历史追溯。
+
+### 怎么判断
+
+- F103 工程已编译通过，但迁移后的 LED、USART3、PWM、CAN 和基础电机行为尚未完成整套上板验收，因此现在直接删除 F407 工程会过早失去方便的对照基线。
+- 两套 CubeMX、HAL 和 FreeRTOS 源码长期并存会增加仓库体积，也容易让开发者误改、误构建旧工程；F407 不适合永久保留在主开发线。
+- 推荐在 F103 关键链路验收后，为最后可用的 F407 状态建立 Git 标签或归档分支，再删除 `stm32_proj/`。Git 历史仍可恢复旧工程，无需在主线永久复制一套源码。
+
+### 实际使用的命令
+
+开发主机（只读检查与文档校验）：
+
+```text
+rg --files -g 'README*' -g 'readme*'
+rg --files stm32f103rct6_proj -g '!build/**'
+rg --files ros2_ws
+git diff --check
+Test-Path <README 中引用的目标文件>
+```
+
+### 验证结果与下一步
+
+- README 中引用的工程文档、原理图、协议头文件和历史引脚表均存在。
+- `git diff --check` 未发现空白错误；本次仅修改文档，没有重新构建或烧录固件。
+- F103 完成关键外设与基础电机上板验收后，再执行 F407 工程归档和删除，不在当前迁移阶段删除。
