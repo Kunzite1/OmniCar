@@ -159,5 +159,4 @@ INFO 仅记录启动和关键事件；DEBUG 每 10 秒输出一次 heap、日志
 
 - [F407 迁移到 F103RCT6 的计划、引脚依据和验证清单](docs/F407迁移到F103RCT6计划.md)
 - [F103RCT6 系统板原理图](docs/Schematic+Prints.pdf)
-- [仓库开发与排查记录](../资料/agent汇报.md)
 - [旧 F407 工程说明](../stm32_proj/README.md)

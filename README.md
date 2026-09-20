@@ -30,7 +30,6 @@ STM32F103RCT6 ── 电机驱动 / 编码器 / IMU
 
 - [F407 迁移到 F103RCT6 的计划与当前进度](stm32f103rct6_proj/docs/F407迁移到F103RCT6计划.md)
 - [F103RCT6 系统板原理图](stm32f103rct6_proj/docs/Schematic+Prints.pdf)
-- [开发与排查记录](资料/agent汇报.md)
 - [旧 F407 转接板引脚分配](docs/引脚分配.md)
 
 具体的环境要求、构建命令、烧录方式、引脚配置和注意事项统一记录在各子工程 README 中，根 README 不再重复维护这些细节。
