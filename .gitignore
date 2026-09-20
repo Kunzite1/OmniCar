@@ -9,6 +9,7 @@
 # ============= 构建/输出目录 =============
 # CMake + GCC 构建输出（Linux / Windows 通用）
 /stm32_proj/build/
+/stm32f103rct6_proj/build/
 
 # ROS 2 / colcon 构建输出（只提交 ros2_ws/src 下的源码）
 /ros2_ws/build/

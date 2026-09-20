@@ -42,14 +42,51 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 )
 
+# ----------------------------------------------------------------------------
+# OmniCar application layers (App / BSP / Middleware / Motion)
+# Keep the project root as an include root for includes such as
+# `#include "App/main/app_main.h"`.
+# ----------------------------------------------------------------------------
+set(OMNICAR_LAYER_INCLUDE_DIRS
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/App
+    ${CMAKE_CURRENT_SOURCE_DIR}/BSP
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middleware
+    ${CMAKE_CURRENT_SOURCE_DIR}/Motion
+)
+
+set(OMNICAR_LAYER_SOURCES
+    # App
+    ${CMAKE_CURRENT_SOURCE_DIR}/App/main/app_main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/App/mode/app_mode.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/App/cmd_handler/app_cmd_handler.c
+    # BSP
+    ${CMAKE_CURRENT_SOURCE_DIR}/BSP/can/can.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/BSP/encoder/encoder.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/BSP/ICM20948/icm20948.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/BSP/led/led.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/BSP/motor/motor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/BSP/uart/uart.c
+    # Middleware
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middleware/can_protocol/can_protocol.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middleware/log/log.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middleware/math/math.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middleware/ringbuffer/ringbuffer.c
+    # Motion
+    ${CMAKE_CURRENT_SOURCE_DIR}/Motion/attitude/attitude.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Motion/controller/controller.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Motion/kinematics/kinematics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Motion/pid/pid.c
+)
+
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
+    ${OMNICAR_LAYER_SOURCES}
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
+    ${OMNICAR_LAYER_INCLUDE_DIRS}
 )
 
 # Add project symbols (macros)

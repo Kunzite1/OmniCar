@@ -135,7 +135,7 @@ Linux / Windows 共用 `stm32_proj/` 下同一份 `CMakeLists.txt`、`.ioc`、`.
 ## 约定
 
 - 格式化：`.clang-format` 位于 `stm32_proj/`（Microsoft 基础，4 空格缩进，Linux 大括号风格，无列宽限制）；IntelliSense 用 C/C++ 扩展读取 `build/compile_commands.json`（见 `stm32_proj/.vscode/settings.json`）。
-- 注释/提交消息中英文混排 —— 跟着附近内容保持一致。提交消息遵循 `vX.Y：中文描述`（如 `v0.2：迁移到CubeMX HAL工程，搭建五层架构骨架`）。
+- 注释/提交消息中英文混排 —— 跟着附近内容保持一致。提交消息使用简洁、明确的中文描述（如 `完成STM32F103RCT6第一阶段代码迁移`），后续不再添加 `vX.Y`、`vX.Y.Z` 等手工版本号前缀。
 - 根目录另有 **`AGENTS.md`**（仓库级规范：构建命令、编码/命名约定、提交与 PR 指南、人工验证要求），与本文件互为补充；两者冲突时以本文件为准。
 - 遇到问题时以本文件为第一参考；Claude 工作时的约束（不代跑烧录、两端共用同一套 CMake、µVision/EIDE 已删除、`kickpi_sdk/` 不入库）都在上面写明。
 - `README.md` 是给人类读者的进度/引脚/常用指令速览（详细规则以本文件为准）；涉及这些内容时两端同步更新。

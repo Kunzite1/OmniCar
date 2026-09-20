@@ -30,7 +30,7 @@ There is currently no unit-test framework or CI. Treat a clean firmware cross-co
 
 ## Commit & Pull Request Guidelines
 
-History uses versioned Chinese subjects such as `v0.4：实现 USART2 日志打印串口与日志分级中间件`; follow `vX.Y[.Z]：简明描述`. Agents may increment only the patch component for routine work records—for example, `v0.7.4` to `v0.7.5`. Never increment the major or minor component without the user's explicit instruction. Keep commits focused. Pull requests should summarize affected layers, mention CubeMX or dual-toolchain configuration changes, link relevant issues, and list build and hardware-test results. Include logs or screenshots only when they clarify device behavior.
+Use concise, action-oriented Chinese commit subjects that describe the actual change, for example `完成STM32F103RCT6第一阶段代码迁移`. Do not prefix new commit subjects with manually maintained version numbers such as `v0.7.7` or `vX.Y[.Z]`. Keep commits focused. Pull requests should summarize affected layers, mention CubeMX or dual-toolchain configuration changes, link relevant issues, and list build and hardware-test results. Include logs or screenshots only when they clarify device behavior.
 
 ## Human Learning Notes
 
