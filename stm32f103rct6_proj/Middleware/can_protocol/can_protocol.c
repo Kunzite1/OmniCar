@@ -11,7 +11,7 @@
 /**
   * @brief 发送心跳帧 0x101
   */
-void CanProto_SendHeartbeat(uint8_t seq)
+bool CanProto_SendHeartbeat(uint8_t seq)
 {
     uint8_t payload[8] = {0};
 
@@ -21,20 +21,20 @@ void CanProto_SendHeartbeat(uint8_t seq)
     payload[3] = CANPROTO_FW_VER_PATCH;
     /* payload[4..5] = flags（预留 0），payload[6..7] = rfu */
 
-    (void)BSP_CAN_Send(CANPROTO_ID_HEARTBEAT, payload, 8U);
+    return BSP_CAN_Send(CANPROTO_ID_HEARTBEAT, payload, 8U);
 }
 
 /**
   * @brief 对 0x2FF 请求回 echo 应答 0x2FE
   */
-void CanProto_SendEchoRsp(const uint8_t *req, uint8_t len)
+bool CanProto_SendEchoRsp(const uint8_t *req, uint8_t len)
 {
     uint8_t payload[8] = {0};
     uint8_t copy       = (len > 7U) ? 7U : len; /* 首字节留给 seq，回显最多 7 字节 */
 
     if ((req == NULL) || (len == 0U))
     {
-        return;
+        return false;
     }
 
     payload[0] = req[0]; /* seq = 请求首字节 */
@@ -43,7 +43,7 @@ void CanProto_SendEchoRsp(const uint8_t *req, uint8_t len)
         memcpy(&payload[1], &req[1], (size_t)(copy - 1U));
     }
 
-    (void)BSP_CAN_Send(CANPROTO_ID_ECHO_RSP, payload, 8U);
+    return BSP_CAN_Send(CANPROTO_ID_ECHO_RSP, payload, 8U);
 }
 
 /**

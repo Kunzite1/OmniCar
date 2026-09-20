@@ -7,6 +7,7 @@
 #ifndef BSP_MOTOR_H
 #define BSP_MOTOR_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -31,8 +32,9 @@ typedef enum {
 /**
   * @brief 电机初始化：启动 TIM3 三路 PWM（20 kHz），全部停止
   * @note  需 CubeMX 已配置 TIM3 与方向 GPIO；App_Init 中调用
+  * @return true 三路 PWM 均启动成功；false 至少一路启动失败
   */
-void BSP_Motor_Init(void);
+bool BSP_Motor_Init(void);
 
 /**
   * @brief 设置某路电机占空比（调速）
@@ -57,6 +59,12 @@ void BSP_Motor_Stop(MotorId id);
   * @brief 停止全部电机
   */
 void BSP_Motor_StopAll(void);
+
+/**
+  * @brief 获取 TIM3 当前预分频值和自动重装值，供状态检查使用
+  */
+uint32_t BSP_Motor_GetPwmPrescaler(void);
+uint32_t BSP_Motor_GetPwmPeriod(void);
 
 #ifdef __cplusplus
 }

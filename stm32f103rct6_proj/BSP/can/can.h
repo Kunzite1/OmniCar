@@ -21,12 +21,23 @@ typedef struct {
     uint8_t  data[8]; /* 数据段（小端） */
 } BSP_CanFrame;
 
+/* CAN 运行统计；tx_queued 表示 HAL 已接受到发送邮箱，不代表总线已收到 ACK。 */
+typedef struct {
+    uint32_t tx_queued;
+    uint32_t tx_failed;
+    uint32_t rx_received;
+    uint32_t rx_dropped;
+    uint32_t error_code;
+    uint32_t state;
+} BSP_CanStats;
+
 /**
   * @brief CAN1 初始化：过滤器全收 → FIFO0，使能接收中断，启动外设
   * @note   外设/引脚/位时序由 CubeMX 配置（PA11/PA12，500 kbps），
   *         此处只做过滤器、中断使能与启动，并创建接收队列
+  * @return true 初始化完成；false HAL 操作或队列创建失败
   */
-void BSP_CAN_Init(void);
+bool BSP_CAN_Init(void);
 
 /**
   * @brief 发送一帧标准数据帧（任务上下文调用）
@@ -40,6 +51,12 @@ bool BSP_CAN_Send(uint16_t std_id, const uint8_t *data, uint8_t len);
   * @return true 收到一帧（写入 *frame）；false 超时
  */
 bool BSP_CAN_Receive(BSP_CanFrame *frame, uint32_t timeout_ticks);
+
+/**
+  * @brief 获取 CAN 收发统计、HAL 状态与错误码
+  * @note  供任务上下文中的低频健康日志使用
+  */
+void BSP_CAN_GetStats(BSP_CanStats *stats);
 
 #ifdef __cplusplus
 }

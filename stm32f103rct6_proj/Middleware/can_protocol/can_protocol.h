@@ -57,13 +57,15 @@ typedef struct {
 /**
   * @brief 发送心跳帧 0x101（seq 自增由调用方维护）
   * @note  经 BSP_CAN_Send 发送，任务上下文调用
+  * @return true 已进入 CAN 发送邮箱；false 参数或邮箱状态异常
   */
-void CanProto_SendHeartbeat(uint8_t seq);
+bool CanProto_SendHeartbeat(uint8_t seq);
 
 /**
   * @brief 对 0x2FF 请求回 echo 应答 0x2FE（载荷原样回显，首字节为 seq）
+  * @return true 已进入 CAN 发送邮箱；false 请求或邮箱状态异常
   */
-void CanProto_SendEchoRsp(const uint8_t *req, uint8_t len);
+bool CanProto_SendEchoRsp(const uint8_t *req, uint8_t len);
 
 /**
   * @brief 按 ID 把收到的帧解析为协议报文

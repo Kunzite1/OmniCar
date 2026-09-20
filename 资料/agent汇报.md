@@ -2,7 +2,7 @@
 
 ## 2026-09-20：STM32F103RCT6 第一阶段代码迁移
 
-结论：已完成 F103RCT6 的 CubeMX 外设配置、代码生成和 OmniCar 四层业务代码迁移，Git Bash Debug 全量构建通过；本轮没有实际烧录，下一步是按 LED、USART3、PWM、CAN 的顺序上板验证。
+结论：已完成 F103RCT6 的 CubeMX 外设配置、代码生成、业务代码迁移和首次板级日志自检。Git Bash DEBUG 构建、ST-Link 烧录校验、USART3 日志及 FreeRTOS 持续运行均正常；后续仍需随小车装配验证 LED、PWM 波形、CAN 物理链路和电机行为。
 
 ### 做了什么
 
@@ -12,6 +12,9 @@
 - 将原 F407 工程的 `App/`、`BSP/`、`Middleware/`、`Motion/` 迁入 F103 工程；日志改为 USART3 PB10/PB11，LED 改为 PA8 高有效，CAN 改为 PA11/PA12，电机 PWM 改为 PC6/PC7/PC8，方向改为 PC4/PC5、PB12～PB15。
 - 在 [CMakeLists.txt](../stm32f103rct6_proj/CMakeLists.txt) 注册所有手写模块，并在 FreeRTOS 的 CubeMX USER CODE 区域接入应用初始化、默认任务和 CAN 指令任务。
 - 维护 [32build.sh](../stm32f103rct6_proj/32build.sh) 与 [32flash.sh](../stm32f103rct6_proj/32flash.sh)；烧录脚本支持 `--adapter-speed` 和 `--dry-run`，默认烧录前重新构建。
+- 重构 `Middleware/log`：日志等级由 `log.h` 中单个宏控制，支持 DEBUG/INFO/WARN/ERROR/NONE；路径裁剪为 `proj/相对路径:函数名():`，任务运行后使用 mutex 防止串行输出交叉。
+- 为 UART、TIM3 PWM、CAN 初始化和 FreeRTOS 任务创建补充返回值检查；CAN ISR 只累计接收/丢帧数据，不执行阻塞日志。
+- `32flash.sh` 原先在加载 target 配置前设置速率，实际被 target 默认值覆盖；已调整参数顺序并确认 OpenOCD 真正采用 100 kHz。
 - 更新 [迁移计划](../stm32f103rct6_proj/docs/F407迁移到F103RCT6计划.md)，记录已完成项目和待上板验证项。
 
 ### 关键判断
@@ -19,7 +22,7 @@
 - CAN 时钟是 APB1 的 36 MHz。`Prescaler=4`、`1+BS1(15)+BS2(2)=18 TQ`，所以波特率为 `36 MHz / 4 / 18 = 500 kbit/s`，采样点约为 88.9%。
 - TIM3 时钟为 72 MHz。`Prescaler=0`、`Period=3599`，所以 PWM 为 `72 MHz / 3600 = 20 kHz`。
 - CAN RX0 中断优先级为 5，与 FreeRTOS 的 `configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY=5` 匹配，可在 HAL 回调中使用 `xQueueSendFromISR()`。
-- F103RCT6 只有 48 KB SRAM，因此 FreeRTOS heap 从原 F407 方案降为 16 KB；链接结果显示 RAM 使用 22,056 B（44.87%），仍有余量，但上板后应继续检查任务栈水位。
+- F103RCT6 只有 48 KB SRAM，因此 FreeRTOS heap 从原 F407 方案降为 16 KB；当前 DEBUG 链接结果显示 RAM 使用 22,088 B（44.94%），仍有余量，但上板后应继续检查任务栈水位。
 
 ### 实际执行的命令
 
@@ -35,23 +38,26 @@ java.exe -Duser.home=C:\Users\admin -jar STM32CubeMX.exe -q .cubemx_generate.scr
 cd /c/Users/admin/Documents/OmniCar/stm32f103rct6_proj
 ./32build.sh Debug --clean
 ./32flash.sh Debug --no-build --dry-run --adapter-speed 100
+./32flash.sh Debug --no-build --adapter-speed 100
 ```
 
 ### 验证结果
 
 - CubeMX 成功生成 CAN、TIM3 PWM、USART3、TIM6 和 FreeRTOS 代码。
-- `32build.sh Debug --clean` 完成 56 个编译/链接步骤，无编译错误；生成 `stm32f103rct6_proj.elf/.bin/.hex`。
-- 链接统计：Flash 31,128 B / 256 KB（11.87%），RAM 22,056 B / 48 KB（44.87%）。
-- `32flash.sh` dry-run 正确选择 `interface/stlink.cfg`、`target/stm32f1x.cfg`、100 kHz 适配器速率及 Debug ELF。该命令没有连接 ST-Link，也没有改变芯片 Flash。
+- 首次日志改动全量构建时发现 `app_main.c` 缺少 HAL 主头文件，补充显式 include 后构建通过；生成 `stm32f103rct6_proj.elf/.bin/.hex`。
+- DEBUG 链接统计：Flash 35,776 B / 256 KB（13.65%），RAM 22,088 B / 48 KB（44.94%）。`Log_Write` 静态栈占用报告为 348 B，两个日志调用任务各配置 1,024 B 栈，实测未触发溢出 hook。
+- OpenOCD 两次完成 Programming、Verified OK 和 reset；识别 STM32F1 Cortex-M3、256 KiB Flash，目标电压约 3.24～3.25 V。修正脚本后实际 SWD 时钟为 100 kHz。
+- CH340 枚举为 COM8。USART3 日志完整显示 72/72/36/72 MHz 时钟、20 kHz TIM3 参数、CAN 启动、defaultTask/canTask 创建和进入；日志路径为 `proj/...:函数名():`。
+- 约 9 秒健康日志显示 FreeRTOS 剩余 heap 13,728 B、日志丢弃 0、CAN 为 LISTENING。未连接 ACK 对端时约 19 秒出现一次发送邮箱警告，后续仅在 DEBUG 摘要累计，不持续刷 WARN。
 - 仓库基线曾跟踪 `stm32f103rct6_proj/build/` 中的 66 个生成文件；本次提交已将它们从 Git 索引移除并补充 `.gitignore`，本地构建文件仍保留。
 
 ### 下一步
 
-1. 实际烧录后确认 PA8 每秒翻转、USART3 115200 8N1 输出启动日志。
-2. 不接电机负载，测量 PC6/PC7/PC8 是否为 20 kHz，并确认六路方向 GPIO 上电为低。
-3. CAN 工作时不要插 Type-C；接好 CAN 总线终端电阻后验证 0x101 心跳和 0x2FF/0x2FE echo。
-4. 上板运行一段时间后读取 FreeRTOS high-water mark，再决定是否调整 16 KB heap 和任务栈。
-5. 后续提交继续保持 `stm32f103rct6_proj/build/` 不进入版本控制。
+1. 装车前目视确认 PA8 每秒翻转；使用示波器或逻辑分析仪测量 PC6/PC7/PC8 是否为 20 kHz，并确认六路方向 GPIO 上电为低。
+2. CAN 工作时不要插 Type-C；接好 CAN 总线终端电阻和 ACK 对端后验证 0x101 心跳及 0x2FF/0x2FE echo。
+3. 装车后再验证电机方向、编码器、IMU 和闭环控制；当前日志自检不能替代这些电气与机械验证。
+4. 长时间运行后继续观察任务 stack high-water mark，再决定是否调整 16 KB heap 和 1,024 B 任务栈。
+5. 日常开发可把 `log.h` 的等级从 DEBUG 改回 INFO；继续保持 `stm32f103rct6_proj/build/` 不进入版本控制。
 
 ## 2026-09-20：README 分层整理
 

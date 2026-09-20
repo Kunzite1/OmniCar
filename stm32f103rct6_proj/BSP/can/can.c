@@ -23,11 +23,15 @@ extern CAN_HandleTypeDef hcan;
 #define CAN_TX_RETRY 3U
 
 static QueueHandle_t s_rx_queue;
+static volatile uint32_t s_tx_queued;
+static volatile uint32_t s_tx_failed;
+static volatile uint32_t s_rx_received;
+static volatile uint32_t s_rx_dropped;
 
 /**
   * @brief 初始化 CAN1：过滤器全收 → FIFO0，使能接收中断并启动
  */
-void BSP_CAN_Init(void)
+bool BSP_CAN_Init(void)
 {
     CAN_FilterTypeDef filter = {0};
 
@@ -42,12 +46,31 @@ void BSP_CAN_Init(void)
     filter.FilterFIFOAssignment = CAN_RX_FIFO0;
     filter.FilterActivation     = ENABLE;
     filter.SlaveStartFilterBank = 14;
-    HAL_CAN_ConfigFilter(&hcan, &filter);
+    if (HAL_CAN_ConfigFilter(&hcan, &filter) != HAL_OK)
+    {
+        return false;
+    }
 
     s_rx_queue = xQueueCreate(CAN_RX_QUEUE_LEN, sizeof(BSP_CanFrame));
+    if (s_rx_queue == NULL)
+    {
+        return false;
+    }
 
-    HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
-    HAL_CAN_Start(&hcan);
+    if (HAL_CAN_Start(&hcan) != HAL_OK)
+    {
+        vQueueDelete(s_rx_queue);
+        s_rx_queue = NULL;
+        return false;
+    }
+    if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
+    {
+        (void)HAL_CAN_Stop(&hcan);
+        vQueueDelete(s_rx_queue);
+        s_rx_queue = NULL;
+        return false;
+    }
+    return true;
 }
 
 /**
@@ -61,6 +84,7 @@ bool BSP_CAN_Send(uint16_t std_id, const uint8_t *data, uint8_t len)
 
     if ((data == NULL) || (len > 8U) || (std_id > 0x7FFU))
     {
+        s_tx_failed++;
         return false;
     }
 
@@ -75,10 +99,12 @@ bool BSP_CAN_Send(uint16_t std_id, const uint8_t *data, uint8_t len)
     {
         if (HAL_CAN_AddTxMessage(&hcan, &tx, (uint8_t *)data, &mailbox) == HAL_OK)
         {
+            s_tx_queued++;
             return true;
         }
         vTaskDelay(1U); /* 邮箱满：等上一帧发走 */
     }
+    s_tx_failed++;
     return false;
 }
 
@@ -87,7 +113,7 @@ bool BSP_CAN_Send(uint16_t std_id, const uint8_t *data, uint8_t len)
  */
 bool BSP_CAN_Receive(BSP_CanFrame *frame, uint32_t timeout_ticks)
 {
-    if (frame == NULL)
+    if ((frame == NULL) || (s_rx_queue == NULL))
     {
         return false;
     }
@@ -108,7 +134,36 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
     {
         frame.id  = (uint16_t)rx.StdId;
         frame.len = (uint8_t)rx.DLC;
-        xQueueSendFromISR(s_rx_queue, &frame, &woken);
+        if (xQueueSendFromISR(s_rx_queue, &frame, &woken) == pdTRUE)
+        {
+            s_rx_received++;
+        }
+        else
+        {
+            s_rx_dropped++;
+        }
+    }
+    else
+    {
+        s_rx_dropped++;
     }
     portYIELD_FROM_ISR(woken);
+}
+
+void BSP_CAN_GetStats(BSP_CanStats *stats)
+{
+    if (stats == NULL)
+    {
+        return;
+    }
+
+    taskENTER_CRITICAL();
+    stats->tx_queued   = s_tx_queued;
+    stats->tx_failed   = s_tx_failed;
+    stats->rx_received = s_rx_received;
+    stats->rx_dropped  = s_rx_dropped;
+    taskEXIT_CRITICAL();
+
+    stats->error_code = HAL_CAN_GetError(&hcan);
+    stats->state      = (uint32_t)HAL_CAN_GetState(&hcan);
 }

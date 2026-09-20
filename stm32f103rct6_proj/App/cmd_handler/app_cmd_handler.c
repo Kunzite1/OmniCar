@@ -21,31 +21,50 @@ void App_CmdHandler_Task(void *argument)
 {
     BSP_CanFrame frame;
     CanProtoMsg  msg;
+    uint32_t     unknown_count = 0U;
+    bool         receive_error_reported = false;
 
     (void)argument;
 
-    LOG_INFO("cmdHandler task started");
+    LOG_INFO("CAN command task entered");
 
     for (;;)
     {
         if (!BSP_CAN_Receive(&frame, portMAX_DELAY))
         {
-            continue; /* portMAX_DELAY 下不会超时，保底循环 */
+            if (!receive_error_reported)
+            {
+                LOG_ERROR("CAN receive queue is unavailable");
+                receive_error_reported = true;
+            }
+            vTaskDelay(pdMS_TO_TICKS(1000U));
+            continue;
         }
+        receive_error_reported = false;
 
-        LOG_INFO("CAN rx id=0x%03X len=%u", frame.id, frame.len);
+        LOG_DEBUG("CAN RX id=0x%03X len=%u", frame.id, frame.len);
 
         if (!CanProto_Parse(&frame, &msg))
         {
-            LOG_WARN("unknown CAN id 0x%03X", frame.id);
+            unknown_count++;
+            if ((unknown_count == 1U) || ((unknown_count % 100U) == 0U))
+            {
+                LOG_WARN("unknown CAN id=0x%03X count=%lu", frame.id, (unsigned long)unknown_count);
+            }
             continue;
         }
 
         switch (msg.type)
         {
             case CANPROTO_MSG_ECHO_REQ:
-                CanProto_SendEchoRsp(msg.data, msg.len);
-                LOG_INFO("echo req -> rsp 0x2FE");
+                if (CanProto_SendEchoRsp(msg.data, msg.len))
+                {
+                    LOG_INFO("echo request answered with CAN id=0x2FE");
+                }
+                else
+                {
+                    LOG_WARN("echo response could not enter a TX mailbox");
+                }
                 break;
 
             default: /* 心跳/速度指令等：链路自检阶段暂不处理 */

@@ -27,6 +27,7 @@
 /* USER CODE BEGIN Includes */
 #include "App/cmd_handler/app_cmd_handler.h"
 #include "App/main/app_main.h"
+#include "Middleware/log/log.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -138,12 +139,30 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   {
+    osThreadId_t canTaskHandle;
     static const osThreadAttr_t canTask_attributes = {
       .name = "canTask",
       .stack_size = 256 * 4,
       .priority = (osPriority_t) osPriorityNormal,
     };
-    osThreadNew(App_CmdHandler_Task, NULL, &canTask_attributes);
+    if (defaultTaskHandle != NULL)
+    {
+      LOG_INFO("defaultTask created, stack=1024 bytes");
+    }
+    else
+    {
+      LOG_ERROR("defaultTask creation failed");
+    }
+
+    canTaskHandle = osThreadNew(App_CmdHandler_Task, NULL, &canTask_attributes);
+    if (canTaskHandle != NULL)
+    {
+      LOG_INFO("canTask created, stack=1024 bytes");
+    }
+    else
+    {
+      LOG_ERROR("canTask creation failed");
+    }
   }
   /* USER CODE END RTOS_THREADS */
 
@@ -163,6 +182,8 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+  (void)argument;
+  LOG_INFO("default task entered");
   /* Infinite loop */
   for(;;)
   {

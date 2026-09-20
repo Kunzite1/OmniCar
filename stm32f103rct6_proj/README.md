@@ -2,7 +2,7 @@
 
 这是 OmniCar 当前使用的 STM32 下位机工程，目标芯片为 STM32F103RCT6（Cortex-M3、256 KB Flash、48 KB SRAM）。工程由 STM32CubeMX 生成基础代码，使用 CMake、Ninja 和 GNU Arm Embedded Toolchain 构建，并运行 FreeRTOS CMSIS-RTOS V2。
 
-当前已完成从旧 STM32F407VET6 工程迁移的第一阶段工作，Debug 全量构建通过。迁移后固件仍需按 LED、日志串口、PWM、CAN 的顺序完成板上验证。
+当前已完成从旧 STM32F407VET6 工程迁移的第一阶段工作，Debug 全量构建、ST-Link 烧录校验和 USART3 启动日志均已验证。日志确认 72 MHz 时钟、TIM3 PWM 初始化、CAN 控制器启动及两个 FreeRTOS 任务均执行到位；LED、PWM 波形、CAN 物理链路和电机行为仍需后续实物验证。
 
 返回[仓库总览](../README.md)。
 
@@ -94,6 +94,24 @@ cmake --build --preset Debug
 ```
 
 `--adapter-speed` 的单位是 kHz。连接稳定后可以逐步提高速率；排查连接故障时先使用 100 kHz。
+
+## 日志配置
+
+日志等级只在 [`Middleware/log/log.h`](Middleware/log/log.h) 中设置：
+
+```c
+#define LOG_LEVEL LOG_LEVEL_DEBUG
+```
+
+可选等级为 `LOG_LEVEL_DEBUG`、`LOG_LEVEL_INFO`、`LOG_LEVEL_WARN`、`LOG_LEVEL_ERROR` 和 `LOG_LEVEL_NONE`。低于当前等级的日志会在编译期移除；`NONE` 会关闭包括 ERROR 在内的全部日志。首次板级测试暂时使用 DEBUG，日常运行可改回 INFO。
+
+日志输出使用工程相对路径和函数名，不暴露开发机绝对路径：
+
+```text
+[3] [INFO] proj/App/main/app_main.c:App_Init(): application initialization complete
+```
+
+INFO 仅记录启动和关键事件；DEBUG 每 10 秒输出一次 heap、日志丢弃数和 CAN 统计。正常的每秒心跳、LED 翻转和中断过程不逐次打印。应用代码应使用 `LOG_*` 宏，不直接使用会绕过等级过滤的 `printf()`。
 
 ## 软件结构
 

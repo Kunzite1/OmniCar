@@ -40,10 +40,10 @@ fi
 [[ -f "$ELF" ]] || { echo "ELF not found: $ELF" >&2; exit 1; }
 OPENOCD_ELF="$ELF"
 case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) OPENOCD_ELF="$(cygpath -m "$ELF")" ;; esac
-CMD=(openocd -f interface/stlink.cfg)
+CMD=(openocd -f interface/stlink.cfg -f target/stm32f1x.cfg)
 if [[ -n "$ADAPTER_SPEED" ]]; then
     CMD+=(-c "adapter speed $ADAPTER_SPEED")
 fi
-CMD+=(-f target/stm32f1x.cfg -c "program \"$OPENOCD_ELF\" verify reset exit")
+CMD+=(-c "program \"$OPENOCD_ELF\" verify reset exit")
 printf 'OpenOCD command:'; printf ' %q' "${CMD[@]}"; printf '\n'
 if (( ! DRY_RUN )); then "${CMD[@]}"; fi

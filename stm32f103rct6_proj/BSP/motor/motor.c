@@ -31,13 +31,25 @@ static const MotorPinMap motor_pin[MOTOR_NUM] = {
     { M3_IN1_GPIO_Port, M3_IN1_Pin, M3_IN2_GPIO_Port, M3_IN2_Pin },
 };
 
-void BSP_Motor_Init(void)
+bool BSP_Motor_Init(void)
 {
-    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
-    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+    bool ok = true;
+
+    if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK)
+    {
+        ok = false;
+    }
+    if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2) != HAL_OK)
+    {
+        ok = false;
+    }
+    if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3) != HAL_OK)
+    {
+        ok = false;
+    }
 
     BSP_Motor_StopAll();
+    return ok;
 }
 
 void BSP_Motor_SetDuty(MotorId id, uint32_t percent)
@@ -91,4 +103,14 @@ void BSP_Motor_StopAll(void)
     {
         BSP_Motor_Stop(i);
     }
+}
+
+uint32_t BSP_Motor_GetPwmPrescaler(void)
+{
+    return htim3.Init.Prescaler;
+}
+
+uint32_t BSP_Motor_GetPwmPeriod(void)
+{
+    return __HAL_TIM_GET_AUTORELOAD(&htim3);
 }
