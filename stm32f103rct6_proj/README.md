@@ -100,10 +100,10 @@ cmake --build --preset Debug
 日志等级只在 [`Middleware/log/log.h`](Middleware/log/log.h) 中设置：
 
 ```c
-#define LOG_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LEVEL LOG_LEVEL_INFO
 ```
 
-可选等级为 `LOG_LEVEL_DEBUG`、`LOG_LEVEL_INFO`、`LOG_LEVEL_WARN`、`LOG_LEVEL_ERROR` 和 `LOG_LEVEL_NONE`。低于当前等级的日志会在编译期移除；`NONE` 会关闭包括 ERROR 在内的全部日志。首次板级测试暂时使用 DEBUG，日常运行可改回 INFO。
+可选等级为 `LOG_LEVEL_DEBUG`、`LOG_LEVEL_INFO`、`LOG_LEVEL_WARN`、`LOG_LEVEL_ERROR` 和 `LOG_LEVEL_NONE`。低于当前等级的日志会在编译期移除；`NONE` 会关闭包括 ERROR 在内的全部日志。日常默认使用 INFO，需要健康摘要和详细收发信息时可临时改为 DEBUG。
 
 日志输出使用工程相对路径和函数名，不暴露开发机绝对路径：
 
@@ -111,7 +111,9 @@ cmake --build --preset Debug
 [3] [INFO] proj/App/main/app_main.c:App_Init(): application initialization complete
 ```
 
-INFO 仅记录启动和关键事件；DEBUG 每 10 秒输出一次 heap、日志丢弃数和 CAN 统计。正常的每秒心跳、LED 翻转和中断过程不逐次打印。应用代码应使用 `LOG_*` 宏，不直接使用会绕过等级过滤的 `printf()`。
+INFO 仅记录启动和关键事件；DEBUG 每 10 秒输出一次 heap、日志丢弃数和 CAN 统计。正常的每秒心跳、LED 翻转和中断过程不逐次打印。
+
+`LOG_*` 在调用任务中完成格式化后，以零等待方式把最多 192 字节的完整日志复制到 16 项 FreeRTOS 队列。低优先级 `logTask` 由 CubeMX 的 `MX_FREERTOS_Init()` 与其他任务统一创建，每 200 ms 批量排空队列，再通过 USART3 轮询发送；因此业务任务不会等待串口。队列未就绪、队列已满或串口发送失败都会增加 dropped 计数。日志接口不能在中断中调用；应用代码也不应直接使用会绕过队列和等级过滤的 `printf()`。
 
 ## 软件结构
 
@@ -132,6 +134,7 @@ INFO 仅记录启动和关键事件；DEBUG 每 10 秒输出一次 heap、日志
 - FreeRTOS 使用 GCC `ARM_CM3` port、CMSIS-RTOS V2、`heap_4` 和 16 KB heap。
 - SysTick 供 FreeRTOS 使用，HAL 时间基准由 TIM6 提供。
 - CAN RX0 中断把报文送入 FreeRTOS 队列，指令任务负责解析和应答。
+- 日志使用 16 项异步队列和 768 字节低优先级发送任务栈，每 200 ms 批量输出。
 - 上电后电机保持停止；默认任务每秒翻转 PA8 LED，并发送 CAN ID `0x101` 心跳。
 - 收到 CAN ID `0x2FF` 测试帧后，以 `0x2FE` 返回 echo。
 - 编码器、ICM20948、PID、姿态和控制器模块仍处于接口骨架或待实现状态；速度指令 `0x201` 尚未接入闭环控制。

@@ -32,7 +32,7 @@ static uint8_t s_health_countdown = 10U;
   */
 void App_Init(void)
 {
-    bool     log_mutex_ok;
+    bool     log_ok;
     bool     uart_ok;
     bool     motor_ok;
     uint32_t timer_clock;
@@ -40,17 +40,18 @@ void App_Init(void)
     uint32_t pwm_prescaler;
     uint32_t pwm_period;
 
-    uart_ok      = BSP_UART_Init();
-    log_mutex_ok = Log_Init();
+    uart_ok = BSP_UART_Init();
+    log_ok  = Log_Init();
+
+    if (!log_ok && uart_ok)
+    {
+        (void)BSP_UART_Printf("[0] [ERROR] asynchronous log initialization failed\r\n");
+    }
 
     LOG_INFO("firmware boot, configured log level=%s", LOG_LEVEL_NAME);
     if (!uart_ok)
     {
         LOG_ERROR("USART3 is not ready");
-    }
-    if (!log_mutex_ok)
-    {
-        LOG_ERROR("log mutex creation failed; output is not serialized");
     }
 
     LOG_INFO("clocks sys=%lu hclk=%lu pclk1=%lu pclk2=%lu Hz",

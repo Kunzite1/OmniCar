@@ -12,7 +12,7 @@
 - 将原 F407 工程的 `App/`、`BSP/`、`Middleware/`、`Motion/` 迁入 F103 工程；日志改为 USART3 PB10/PB11，LED 改为 PA8 高有效，CAN 改为 PA11/PA12，电机 PWM 改为 PC6/PC7/PC8，方向改为 PC4/PC5、PB12～PB15。
 - 在 [CMakeLists.txt](../stm32f103rct6_proj/CMakeLists.txt) 注册所有手写模块，并在 FreeRTOS 的 CubeMX USER CODE 区域接入应用初始化、默认任务和 CAN 指令任务。
 - 维护 [32build.sh](../stm32f103rct6_proj/32build.sh) 与 [32flash.sh](../stm32f103rct6_proj/32flash.sh)；烧录脚本支持 `--adapter-speed` 和 `--dry-run`，默认烧录前重新构建。
-- 重构 `Middleware/log`：日志等级由 `log.h` 中单个宏控制，支持 DEBUG/INFO/WARN/ERROR/NONE；路径裁剪为 `proj/相对路径:函数名():`，任务运行后使用 mutex 防止串行输出交叉。
+- 重构 `Middleware/log`：日志等级由 `log.h` 中单个宏控制，支持 DEBUG/INFO/WARN/ERROR/NONE；路径裁剪为 `proj/相对路径:函数名():`。后续将同步串口输出改为 16 项队列和低优先级 `logTask`，调用方只格式化并零等待入队，日志任务每 200 ms 批量发送；任务创建与 default/CAN 任务一起集中在 CubeMX 的 `MX_FREERTOS_Init()` USER CODE 区域。
 - 为 UART、TIM3 PWM、CAN 初始化和 FreeRTOS 任务创建补充返回值检查；CAN ISR 只累计接收/丢帧数据，不执行阻塞日志。
 - `32flash.sh` 原先在加载 target 配置前设置速率，实际被 target 默认值覆盖；已调整参数顺序并确认 OpenOCD 真正采用 100 kHz。
 - 更新 [迁移计划](../stm32f103rct6_proj/docs/F407迁移到F103RCT6计划.md)，记录已完成项目和待上板验证项。
@@ -41,13 +41,22 @@ cd /c/Users/admin/Documents/OmniCar/stm32f103rct6_proj
 ./32flash.sh Debug --no-build --adapter-speed 100
 ```
 
+开发主机（PowerShell，异步日志复测）：
+
+```text
+使用 System.IO.Ports.SerialPort 独占打开 COM8，参数为 115200 8N1
+openocd -f interface/stlink.cfg -f target/stm32f1x.cfg -c "adapter speed 100" -c init -c "reset run" -c shutdown
+```
+
 ### 验证结果
 
 - CubeMX 成功生成 CAN、TIM3 PWM、USART3、TIM6 和 FreeRTOS 代码。
 - 首次日志改动全量构建时发现 `app_main.c` 缺少 HAL 主头文件，补充显式 include 后构建通过；生成 `stm32f103rct6_proj.elf/.bin/.hex`。
-- DEBUG 链接统计：Flash 35,776 B / 256 KB（13.65%），RAM 22,088 B / 48 KB（44.94%）。`Log_Write` 静态栈占用报告为 348 B，两个日志调用任务各配置 1,024 B 栈，实测未触发溢出 hook。
+- 首次同步日志 DEBUG 链接统计为 Flash 35,776 B / 256 KB、RAM 22,088 B / 48 KB。改为异步队列并统一由 `MX_FREERTOS_Init()` 创建任务后，INFO 构建为 Flash 34,700 B（13.24%）、RAM 22,080 B（44.92%）；`Log_Write` 静态栈占用 348 B，`Log_Task` 为 216 B，日志任务配置 768 B 栈。
+- 日志队列和任务从 16 KB FreeRTOS heap 动态分配，预计比原互斥量方案多使用约 4 KB；按首次上板剩余 13,728 B 推算仍有约 9.7 KB，实际值需下次烧录后由 DEBUG 健康摘要确认。
 - OpenOCD 两次完成 Programming、Verified OK 和 reset；识别 STM32F1 Cortex-M3、256 KiB Flash，目标电压约 3.24～3.25 V。修正脚本后实际 SWD 时钟为 100 kHz。
 - CH340 枚举为 COM8。USART3 日志完整显示 72/72/36/72 MHz 时钟、20 kHz TIM3 参数、CAN 启动、defaultTask/canTask 创建和进入；日志路径为 `proj/...:函数名():`。
+- 异步日志版本重新烧录、校验并复位成功；串口完整收到 11 条预期启动日志，顺序与调用顺序一致，`logTask` 创建信息和三个任务入口日志均正常，没有乱码、交叉、截断或缺行。当前 INFO 等级不输出健康摘要，因此本次未直接测量异步版本的 dropped 和剩余 heap。
 - 约 9 秒健康日志显示 FreeRTOS 剩余 heap 13,728 B、日志丢弃 0、CAN 为 LISTENING。未连接 ACK 对端时约 19 秒出现一次发送邮箱警告，后续仅在 DEBUG 摘要累计，不持续刷 WARN。
 - 仓库基线曾跟踪 `stm32f103rct6_proj/build/` 中的 66 个生成文件；本次提交已将它们从 Git 索引移除并补充 `.gitignore`，本地构建文件仍保留。
 
@@ -56,8 +65,8 @@ cd /c/Users/admin/Documents/OmniCar/stm32f103rct6_proj
 1. 装车前目视确认 PA8 每秒翻转；使用示波器或逻辑分析仪测量 PC6/PC7/PC8 是否为 20 kHz，并确认六路方向 GPIO 上电为低。
 2. CAN 工作时不要插 Type-C；接好 CAN 总线终端电阻和 ACK 对端后验证 0x101 心跳及 0x2FF/0x2FE echo。
 3. 装车后再验证电机方向、编码器、IMU 和闭环控制；当前日志自检不能替代这些电气与机械验证。
-4. 长时间运行后继续观察任务 stack high-water mark，再决定是否调整 16 KB heap 和 1,024 B 任务栈。
-5. 日常开发可把 `log.h` 的等级从 DEBUG 改回 INFO；继续保持 `stm32f103rct6_proj/build/` 不进入版本控制。
+4. 异步日志启动顺序已验证；需要评估压力时临时启用 DEBUG，继续观察 dropped、运行时剩余 heap 和任务 stack high-water mark，再决定是否调整 16 项队列及 768 B 日志任务栈。
+5. 长时间运行后继续观察各任务 stack high-water mark；日常保持 INFO，需要详细排障时再临时启用 DEBUG。
 
 ## 2026-09-20：README 分层整理
 

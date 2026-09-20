@@ -33,7 +33,7 @@ extern "C" {
  * 低于该等级的日志在编译期移除，不占用串口时间，也不会保留格式串。
  */
 #ifndef LOG_LEVEL
-#define LOG_LEVEL LOG_LEVEL_INFO /* 首次板级测试；完成后可改回 LOG_LEVEL_INFO */
+#define LOG_LEVEL LOG_LEVEL_INFO /* 日常默认；排障时可临时改为 LOG_LEVEL_DEBUG */
 #endif
 
 #if (LOG_LEVEL < LOG_LEVEL_DEBUG) || (LOG_LEVEL > LOG_LEVEL_NONE)
@@ -53,21 +53,27 @@ extern "C" {
 #endif
 
 /**
-  * @brief 初始化日志串口互斥量
-  * @note  在 osKernelInitialize() 之后、任务创建之前调用；失败时仍可输出，
-  *        但任务间不再具备串行化保护。
-  * @return true 初始化成功；false 互斥量创建失败
+  * @brief 创建日志队列
+  * @note  在 osKernelInitialize() 之后、osKernelStart() 之前调用。调度器启动前
+  *        产生的日志先进入队列，日志任务运行后再通过 USART3 输出。
+  * @return true 队列创建成功；false 初始化失败
   */
 bool Log_Init(void);
 
 /**
-  * @brief 获取因互斥超时或 USART3 发送失败而丢弃的日志数量
+  * @brief 低优先级日志发送任务入口
+  * @note  由 MX_FREERTOS_Init() 统一创建，不应直接调用
+  */
+void Log_Task(void *argument);
+
+/**
+  * @brief 获取因队列未就绪、队列已满或 USART3 发送失败而丢弃的日志数量
   */
 uint32_t Log_GetDroppedCount(void);
 
 /**
-  * @brief 日志核心函数：组装 [tick] [LEVEL] proj/file:function() + 消息
-  * @note  由 LOG_* 宏调用，一般无需直接使用
+  * @brief 日志核心函数：组装 [tick] [LEVEL] proj/file:function() + 消息并入队
+  * @note  由 LOG_* 宏调用，一般无需直接使用；禁止在中断中调用
   */
 void Log_Write(int level, const char *file, const char *function, const char *fmt, ...);
 

@@ -27,6 +27,7 @@
 /* USER CODE BEGIN Includes */
 #include "App/cmd_handler/app_cmd_handler.h"
 #include "App/main/app_main.h"
+#include "BSP/uart/uart.h"
 #include "Middleware/log/log.h"
 /* USER CODE END Includes */
 
@@ -140,10 +141,16 @@ void MX_FREERTOS_Init(void) {
   /* add threads, ... */
   {
     osThreadId_t canTaskHandle;
+    osThreadId_t logTaskHandle;
     static const osThreadAttr_t canTask_attributes = {
       .name = "canTask",
       .stack_size = 256 * 4,
       .priority = (osPriority_t) osPriorityNormal,
+    };
+    static const osThreadAttr_t logTask_attributes = {
+      .name = "logTask",
+      .stack_size = 192 * 4,
+      .priority = (osPriority_t) osPriorityLow,
     };
     if (defaultTaskHandle != NULL)
     {
@@ -152,6 +159,16 @@ void MX_FREERTOS_Init(void) {
     else
     {
       LOG_ERROR("defaultTask creation failed");
+    }
+
+    logTaskHandle = osThreadNew(Log_Task, NULL, &logTask_attributes);
+    if (logTaskHandle != NULL)
+    {
+      LOG_INFO("logTask created, stack=768 bytes, period=200 ms");
+    }
+    else
+    {
+      (void)BSP_UART_Printf("[0] [ERROR] logTask creation failed\r\n");
     }
 
     canTaskHandle = osThreadNew(App_CmdHandler_Task, NULL, &canTask_attributes);
