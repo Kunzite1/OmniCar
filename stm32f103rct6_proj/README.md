@@ -2,7 +2,7 @@
 
 这是 OmniCar 当前使用的 STM32 下位机工程，目标芯片为 STM32F103RCT6（Cortex-M3、256 KB Flash、48 KB SRAM）。工程由 STM32CubeMX 生成基础代码，使用 CMake、Ninja 和 GNU Arm Embedded Toolchain 构建，并运行 FreeRTOS CMSIS-RTOS V2。
 
-当前已完成从旧 STM32F407VET6 工程迁移的第一阶段工作，Debug 全量构建、ST-Link 烧录校验和 USART3 启动日志均已验证。日志确认 72 MHz 时钟、TIM3 PWM 初始化、CAN 控制器启动及两个 FreeRTOS 任务均执行到位；LED、PWM 波形、CAN 物理链路和电机行为仍需后续实物验证。
+当前已完成从旧 STM32F407VET6 工程迁移的第一阶段工作，并配置 I2C1 供 ICM20948 使用。Debug 全量构建、ST-Link 烧录校验和 USART3 启动日志均已验证；日志确认 72 MHz 时钟、TIM3 PWM、CAN 控制器及 default/log/CAN 三个 FreeRTOS 任务均正常启动。LED、PWM 波形、CAN 物理链路、ICM20948 通信和电机行为仍需后续实物验证。
 
 返回[仓库总览](../README.md)。
 
@@ -15,7 +15,7 @@
 | 板载 LED | PA8 | 推挽输出，高电平点亮 |
 | 日志串口 | PB10 / PB11 | USART3 TX/RX，115200 8N1，无流控 |
 | CAN1 | PA11 / PA12 | RX/TX，500 kbit/s，RX0 中断 |
-| ICM20948 九轴 IMU | PB6 / PB7 | I2C1 SCL/SDA，硬件 I2C，默认引脚无需重映射|
+| ICM20948 九轴 IMU | PB6 / PB7 | I2C1 SCL/SDA，硬件 I2C，默认引脚无需重映射 |
 | 电机 PWM | PC6 / PC7 / PC8 | TIM3 CH1/CH2/CH3 全重映射，20 kHz |
 | 电机 1 方向 | PC4 / PC5 | 普通推挽输出 |
 | 电机 2 方向 | PB12 / PB13 | 普通推挽输出 |
@@ -25,7 +25,7 @@
 
 电机相关引脚中，PC6～PC8、PB10～PB15 同时连接板载 LCD 接口。本项目不使用 LCD，因此可以复用这些引脚；如果以后启用 LCD，必须重新规划电机和日志串口引脚。
 
-IMU 选用 I2C1 的默认引脚 PB6/PB7，不需要开 AFIO 重映射。这两个脚同时也连到板载屏幕排针，**使用 IMU 时不要同时接屏幕**；后续若要启用屏幕，需要连同电机、日志串口一起重新规划。总线侧 SDA/SCL 需 4.7 kΩ 上拉到 3.3 V（多数 ICM20948 模块板上自带，没有则外接）。CubeMX 已将 I2C1 配置为 100 kHz 标准模式、7 位地址和允许时钟拉伸；当前未启用 DMA 或 I2C 中断，IMU 模块仍待接线验证。
+IMU 选用 I2C1 的默认引脚 PB6/PB7，不需要开 AFIO 重映射。这两个脚同时也连到板载屏幕排针，**使用 IMU 时不要同时接屏幕**；后续若要启用屏幕，需要连同电机、日志串口一起重新规划。总线侧 SDA/SCL 需 4.7 kΩ 上拉到 3.3 V（多数 ICM20948 模块板上自带，没有则外接）。CubeMX 已将 I2C1 配置为 100 kHz 标准模式、7 位地址和允许时钟拉伸；当前未启用 DMA 或 I2C 中断。ICM20948 驱动仍为接口骨架，尚未执行地址应答或 `WHO_AM_I` 检查。
 
 ## 重要硬件注意事项
 
@@ -33,7 +33,7 @@ IMU 选用 I2C1 的默认引脚 PB6/PB7，不需要开 AFIO 重映射。这两�
 - CubeMX 的 `System Core > SYS > Debug` 必须选择 `Serial Wire`，不要改成 `No Debug`，否则程序启动后可能立即释放 SWD 引脚，导致 ST-Link 难以重新连接。
 - 若 SWD 再次失联，优先降低适配器速率并尝试 Under Reset 连接；必要时拉高 BOOT0 后执行全片擦除，再恢复从 Flash 启动。
 - 首次验证电机时应断开电机电源或架空车轮，先确认 PWM 频率、方向 GPIO 和停止状态，再带载测试。
-- 原理图见 [`docs/Schematic+Prints.pdf`](docs/Schematic+Prints.pdf)，更完整的迁移判断见[迁移计划](docs/F407迁移到F103RCT6计划.md)。
+- 原理图见 [`docs/双TypeCF103RCT6原理图.pdf`](docs/双TypeCF103RCT6原理图.pdf)，更完整的迁移判断见[迁移计划](docs/F407迁移到F103RCT6计划.md)。
 
 ## Windows Git Bash 构建
 
@@ -98,6 +98,15 @@ cmake --build --preset Debug
 
 `--adapter-speed` 的单位是 kHz。连接稳定后可以逐步提高速率；排查连接故障时先使用 100 kHz。
 
+## 最近一次板级验证
+
+2026-09-21 使用 ST-Link 和 CH340 USB 串口完成复测：
+
+- Debug 全量构建通过，Flash 使用 35,560 B（13.57%），RAM 使用 22,168 B（45.10%）。
+- OpenOCD 识别 STM32F103 高密度器件和 256 KiB Flash，目标电压约 3.25 V；烧录、校验和复位均成功。
+- COM8 以 115200 8N1 完整收到 11 条启动日志；时钟、USART3、TIM3、CAN、应用初始化及三个 FreeRTOS 任务均成功，观察窗口内没有 `WARN` 或 `ERROR`。
+- `MX_I2C1_Init()` 位于应用日志之前；能够进入应用并输出日志说明 HAL I2C 初始化未进入 `Error_Handler()`。这不代表 ICM20948 已应答，传感器通信仍需驱动实现后单独验证。
+
 ## 日志配置
 
 日志等级只在 [`Middleware/log/log.h`](Middleware/log/log.h) 中设置：
@@ -140,7 +149,7 @@ INFO 仅记录启动和关键事件；DEBUG 每 10 秒输出一次 heap、日志
 - 日志使用 16 项异步队列和 768 字节低优先级发送任务栈，每 200 ms 批量输出。
 - 上电后电机保持停止；默认任务每秒翻转 PA8 LED，并发送 CAN ID `0x101` 心跳。
 - 收到 CAN ID `0x2FF` 测试帧后，以 `0x2FE` 返回 echo。
-- 编码器、ICM20948、PID、姿态和控制器模块仍处于接口骨架或待实现状态；速度指令 `0x201` 尚未接入闭环控制。
+- I2C1 已初始化；编码器、ICM20948、PID、姿态和控制器模块仍处于接口骨架或待实现状态，速度指令 `0x201` 尚未接入闭环控制。
 
 ## CubeMX 再生成
 
@@ -149,8 +158,9 @@ INFO 仅记录启动和关键事件；DEBUG 每 10 秒输出一次 heap、日志
 1. SYS Debug 仍为 `Serial Wire`。
 2. HSE 8 MHz 和 72 MHz 时钟树未变化。
 3. FreeRTOS 仍使用 Cortex-M3 的 `ARM_CM3` port，CAN 中断优先级仍满足 FromISR API 要求。
-4. 所有手写内容位于 CubeMX 的 `USER CODE` 块内。
-5. 顶层 `CMakeLists.txt` 中的手写模块列表仍完整。
+4. I2C1 仍使用 PB6/PB7、100 kHz，并生成 `Core/Src/i2c.c` 与 HAL I2C 源文件。
+5. 所有手写内容位于 CubeMX 的 `USER CODE` 块内。
+6. 顶层 `CMakeLists.txt` 中的手写模块列表仍完整。
 
 不要提交 `build/` 目录。CubeMX 生成后应至少运行一次：
 
@@ -161,5 +171,5 @@ INFO 仅记录启动和关键事件；DEBUG 每 10 秒输出一次 heap、日志
 ## 相关文档
 
 - [F407 迁移到 F103RCT6 的计划、引脚依据和验证清单](docs/F407迁移到F103RCT6计划.md)
-- [F103RCT6 系统板原理图](docs/Schematic+Prints.pdf)
+- [F103RCT6 系统板原理图](docs/双TypeCF103RCT6原理图.pdf)
 - [旧 F407 工程说明](../stm32_proj/README.md)

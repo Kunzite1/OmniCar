@@ -2,32 +2,31 @@
 
 ## Project Structure & Module Organization
 
-This is the `OmniCar` monorepo. STM32 firmware lives under `stm32_proj/` and targets the STM32F407VET6. ROS 2 packages belong under `ros2_ws/src/`; never commit the generated `ros2_ws/build/`, `ros2_ws/install/`, or `ros2_ws/log/` directories. Repository-level documentation and hardware references remain at the root, including `资料/`, `引脚分配.md`, and `采购清单.md`.
+`OmniCar` is a firmware and ROS 2 monorepo. The active firmware is `stm32f103rct6_proj/`, targeting STM32F103RCT6; `stm32_proj/` is the retired STM32F407VET6 implementation and should only be used for migration reference. ROS 2 packages belong under `ros2_ws/src/`. Do not commit generated `build/`, `install/`, or `log/` directories.
 
-The firmware's hand-written code follows a layered layout: `App/` contains the main loop and state handling, `Motion/` contains control and kinematics, `Middleware/` provides reusable services, and `BSP/` owns hardware-facing drivers. `Core/`, `Drivers/`, `startup_stm32f407xx.s`, and `cmake/stm32cubemx/` are STM32CubeMX or vendor-managed.
-
-Keep application dependencies flowing downward; BSP is the layer that directly calls HAL peripherals. Put CubeMX-managed edits inside `/* USER CODE BEGIN */` blocks so regeneration preserves them. When adding a firmware module, register its source in `stm32_proj/CMakeLists.txt` (the `OMNICAR_LAYER_SOURCES` list).
+Hand-written firmware follows four layers: `App/` owns the main loop and state handling, `Motion/` contains control algorithms, `Middleware/` provides reusable services, and `BSP/` owns HAL-facing drivers. `Core/`, `Drivers/`, `Middlewares/`, `startup_stm32f103xe.s`, and `cmake/stm32cubemx/` are CubeMX or vendor managed. Keep dependencies flowing downward and put generated-file edits inside `/* USER CODE BEGIN */` blocks. Register new hand-written sources in `stm32f103rct6_proj/CMakeLists.txt` under `OMNICAR_LAYER_SOURCES`.
 
 ## Build, Test, and Development Commands
 
-Run firmware commands from `stm32_proj/`:
+Run firmware commands from `stm32f103rct6_proj/`:
 
 ```sh
-cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake
-cmake --build build
-cmake --build build --target clean
+./32build.sh Debug --clean
+cmake --preset Debug
+cmake --build --preset Debug
+./32flash.sh Debug --adapter-speed 100
 ```
 
-The build requires `arm-none-eabi-*` tools and produces `build/OmniCar.elf`, `.bin`, and `.hex`. The checked-in presets use Ninja; the explicit configure command works with the host's default generator. Do not automate flashing: contributors should use the VS Code `flash` task or OpenOCD manually after reviewing the artifact.
+The build requires CMake, Ninja, and `arm-none-eabi-*`; outputs are under `build/Debug/`. Flash only when the task explicitly requests hardware programming and the artifact has been reviewed. The flash script uses OpenOCD, ST-Link, verification, and reset.
 
 ## Coding Style & Naming Conventions
 
-Firmware code is C11. Follow `stm32_proj/.clang-format`: four-space indentation, Linux-style braces, and no fixed column limit. Match nearby Chinese/English comments. Use module-prefixed public APIs such as `BSP_LED_Init()` and `App_Loop()`, lowercase module filenames, and paired `.c`/`.h` files. Include project headers from a layer root, for example `#include "BSP/led/led.h"`. Preserve the existing documented header and `extern "C"` guard style. Follow each ROS 2 package's language conventions and keep package dependencies declared in its manifest.
+Firmware is C11. Use four-space indentation, Linux-style braces, nearby Chinese/English comment style, lowercase paired `.c/.h` filenames, and module-prefixed APIs such as `BSP_LED_Init()` and `App_Loop()`. Follow the formatting rules in `stm32_proj/.clang-format` until the active project gains its own copy. Include headers from the project root, for example `#include "BSP/led/led.h"`, and preserve documented headers plus `extern "C"` guards.
 
 ## Testing Guidelines
 
-There is currently no unit-test framework or CI. Treat a clean firmware cross-compile as the required automated check. When ROS 2 packages are present, run their relevant `colcon build` and tests. For hardware changes, document manual board verification—peripheral, wiring, expected behavior, and observed result—in the pull request. Never commit generated firmware or ROS 2 build output.
+There is no firmware unit-test framework or CI. A clean cross-compile is the required automated check. For hardware changes, record the wiring, expected behavior, observed serial output, and any unverified physical behavior. Run package-specific `colcon build` and tests for ROS 2 changes.
 
 ## Commit & Pull Request Guidelines
 
-Use concise, action-oriented Chinese commit subjects that describe the actual change, for example `完成STM32F103RCT6第一阶段代码迁移`. Do not prefix new commit subjects with manually maintained version numbers such as `v0.7.7` or `vX.Y[.Z]`. Keep commits focused. Pull requests should summarize affected layers, mention CubeMX or dual-toolchain configuration changes, link relevant issues, and list build and hardware-test results. Include logs or screenshots only when they clarify device behavior.
+Use focused, action-oriented Chinese subjects; scoped prefixes such as `docs:` are allowed when requested. Do not add manual version prefixes like `v0.7.7`. Pull requests should identify affected layers, CubeMX changes, build results, hardware observations, and remaining unverified items.
