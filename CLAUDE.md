@@ -37,6 +37,25 @@ I2C1 已配置为 PB6/PB7、100 kHz、7 位地址、允许时钟拉伸，未启�
 
 当前系统板原理图为 `stm32f103rct6_proj/docs/双TypeCF103RCT6原理图.pdf`。
 
+## 诊断证据与汇报
+
+汇报构建、烧录、串口/CAN 测试或硬件识别时，必须同时给出执行的准确命令、去除无关噪声后的关键日志，以及该日志支持的结论。区分直接观察与推断，并明确说明未执行的配置、发送、烧录或物理验证；不能只写“识别正常”或“测试通过”。
+
+K1 Mini 上检查达妙 USB-CAN 时使用以下只读命令，并按“命令 → 日志 → 判读”汇报：
+
+```sh
+lsusb -d 2e88:4603
+lsusb -t
+udevadm info --query=property --name=/dev/ttyACM0
+ls -l /dev/serial/by-id/
+ip -details link show type can
+fuser -v /dev/ttyACM0
+journalctl -k --no-pager --since '<插入前时间>' --until '<插入后时间>' \
+  | grep -E 'usb 3-1|cdc_acm|ttyACM|2e88|4603'
+```
+
+`HDSC CDC Device` 表示 USB 枚举成功，`Driver=cdc_acm` 和 `ttyACM0: USB ACM device` 表示内核绑定 CDC ACM 串口驱动，`DEVLINKS` 给出可稳定引用的 `/dev/serial/by-id/` 路径。`ip ... type can` 只出现 `rockchip_canfd` 时，说明该 `can0` 是 K1 Mini 板载 CAN，而达妙模块没有直接注册为 SocketCAN；`fuser` 无输出表示当前没有进程占用串口。
+
 ## 软件结构
 
 活动固件保持分层依赖：`App -> Motion/Middleware -> BSP -> HAL`。

@@ -27,6 +27,10 @@ Firmware is C11. Use four-space indentation, Linux-style braces, nearby Chinese/
 
 There is no firmware unit-test framework or CI. A clean cross-compile is the required automated check. For hardware changes, record the wiring, expected behavior, observed serial output, and any unverified physical behavior. Run package-specific `colcon build` and tests for ROS 2 changes.
 
+## Diagnostic Evidence & Reporting
+
+Reports for builds, flashing, serial/CAN tests, and hardware detection must include the exact command, the relevant output, and what that output proves. Trim unrelated noise, distinguish direct observations from inference, and state what was not tested or changed; do not report only “passed” or “detected.” For K1 Mini USB-CAN checks, include evidence from `lsusb`, `lsusb -t`, `udevadm info --query=property --name=/dev/ttyACM0`, `ip -details link show type can`, and `fuser -v /dev/ttyACM0` so CDC serial devices are not confused with SocketCAN interfaces.
+
 ## Commit & Pull Request Guidelines
 
 Use focused, action-oriented Chinese subjects; scoped prefixes such as `docs:` are allowed when requested. Do not add manual version prefixes like `v0.7.7`. Pull requests should identify affected layers, CubeMX changes, build results, hardware observations, and remaining unverified items.
