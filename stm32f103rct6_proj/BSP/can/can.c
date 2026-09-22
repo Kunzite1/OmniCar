@@ -130,8 +130,19 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
     BSP_CanFrame        frame;
     BaseType_t          woken = pdFALSE;
 
+    if ((hcan == NULL) || (hcan->Instance != CAN1) || (s_rx_queue == NULL))
+    {
+        s_rx_dropped++;
+        return;
+    }
+
     if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx, frame.data) == HAL_OK)
     {
+        if ((rx.IDE != CAN_ID_STD) || (rx.RTR != CAN_RTR_DATA) || (rx.DLC > 8U))
+        {
+            s_rx_dropped++;
+            return;
+        }
         frame.id  = (uint16_t)rx.StdId;
         frame.len = (uint8_t)rx.DLC;
         if (xQueueSendFromISR(s_rx_queue, &frame, &woken) == pdTRUE)

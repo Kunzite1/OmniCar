@@ -30,18 +30,15 @@ bool CanProto_SendHeartbeat(uint8_t seq)
 bool CanProto_SendEchoRsp(const uint8_t *req, uint8_t len)
 {
     uint8_t payload[8] = {0};
-    uint8_t copy       = (len > 7U) ? 7U : len; /* 首字节留给 seq，回显最多 7 字节 */
+    uint8_t copy       = (len > sizeof(payload)) ? (uint8_t)sizeof(payload) : len;
 
     if ((req == NULL) || (len == 0U))
     {
         return false;
     }
 
-    payload[0] = req[0]; /* seq = 请求首字节 */
-    if (copy > 1U)
-    {
-        memcpy(&payload[1], &req[1], (size_t)(copy - 1U));
-    }
+    /* 请求首字节仍作为 seq；其余字节原样回显，不足 8 字节补 0。 */
+    memcpy(payload, req, copy);
 
     return BSP_CAN_Send(CANPROTO_ID_ECHO_RSP, payload, 8U);
 }

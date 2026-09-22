@@ -101,7 +101,7 @@ void App_Init(void)
   * @brief 业务层主循环体：由 FreeRTOS 默认任务周期调用
   * @note  1 Hz 发心跳帧 0x101（seq 自增）+ LED 翻转；上位机发 0x2FF
   *        测试帧由 canTask 任务回 echo（见 App/cmd_handler）。
-  *        上位机侧用 candump can0 看心跳、cansend 发测试帧联调。
+  *        K1 Mini 侧由 car_control 的 CAN 通信节点收心跳并发送测试帧。
   */
 void App_Loop(void)
 {

@@ -59,7 +59,9 @@ void App_CmdHandler_Task(void *argument)
             case CANPROTO_MSG_ECHO_REQ:
                 if (CanProto_SendEchoRsp(msg.data, msg.len))
                 {
-                    LOG_INFO("echo request answered with CAN id=0x2FE");
+                    LOG_INFO("CAN echo seq=%u len=%u answered with id=0x2FE",
+                             (unsigned int)msg.data[0],
+                             (unsigned int)msg.len);
                 }
                 else
                 {
