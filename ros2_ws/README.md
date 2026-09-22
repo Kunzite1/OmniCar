@@ -1,89 +1,75 @@
 # ROS 2 上位机工作区
 
-这是 OmniCar 的 ROS 2 工作区，目标运行环境为 KICKPI K1 Mini（RK3568）上的 ROS 2 Humble。上位机后续负责传感器接入、任务控制和通过 USB-CAN 向 STM32 下位机发送运动指令。
-
-当前工作区只有一个最小 `ament_python` 测试包，尚未实现正式的 CAN 控制节点。
+这是 OmniCar 在 KICKPI K1 Mini（RK3568）上的 ROS 2 Humble 工作区。当前重点是通过达妙 USB-CAN 与 STM32F103RCT6 通信；后续业务控制代码继续放在 `car_control` 包内，并通过通信层提供的队列接口发送 CAN 帧。
 
 返回[仓库总览](../README.md)。
 
-## 当前包
+## 当前功能包
 
-| 包 | Python 模块 | 状态 |
+| 包 | 状态 | 职责 |
 | --- | --- | --- |
-| `test` | `test_pkg` | 提供 `hello_publisher`，每秒向 `/hello` 发布递增字符串 |
+| [`car_control`](src/car_control/README.md) | 开发中 | CAN 节点、发送队列、达妙 CDC 协议打包；后续承载车辆业务组件 |
 
-包名与 Python 模块名不同：ROS 2 包名是 `test`，源码模块目录是 `test_pkg/`，不要把业务节点误放进用于代码检查的 `test/test/` 目录。
+`car_control` 的通信节点独占 `/dev/ttyACM0`。ROS 发送者向 `/car_control/can/tx` 发布 `CanFrame`，节点校验后放入有界队列，由唯一 I/O 线程调用硬件发送；接收帧发布到 `/car_control/can/rx`。协议编码位于独立的 C11 文件 `src/can_protocol.c`。
 
-## 构建与运行
+## 设备识别
 
-先准备 ROS 2 Humble 环境，然后从工作区目录执行：
+达妙模块枚举为 USB CDC 串口，并不会创建 SocketCAN 接口。板载 `can0` 是 RK3568 控制器，不要与 `/dev/ttyACM0` 混淆。排查时执行：
+
+```sh
+lsusb
+lsusb -t
+udevadm info --query=property --name=/dev/ttyACM0
+ip -details link show type can
+fuser -v /dev/ttyACM0
+```
+
+其中 `lsusb` 应显示 VID:PID `2e88:4603`，拓扑应使用 `cdc_acm`；启动节点前 `fuser` 不应显示占用进程。
+
+## 容器构建与运行
+
+主机未安装原生 Humble，使用现有 `ros:humble-ros-base` 镜像：
+
+```sh
+docker run --rm -it --network host \
+  --device=/dev/ttyACM0:/dev/ttyACM0 \
+  -v /root/OmniCar/ros2_ws:/ws -w /ws \
+  ros:humble-ros-base bash
+```
+
+容器内执行：
 
 ```sh
 source /opt/ros/humble/setup.bash
-colcon build --symlink-install
+colcon build --packages-select car_control
 source install/setup.bash
-ros2 run test hello_publisher
+ros2 run car_control can_communication_node \
+  --ros-args --params-file src/car_control/config/can.yaml
 ```
 
-在另一个已经加载工作区环境的终端查看消息：
+默认串口速率为 921600，CAN 波特率索引 `3` 对应 500 kbit/s。
+
+## CAN 链路验证
+
+STM32 每秒发送标准帧 `0x101`。查看接收话题：
 
 ```sh
-source /opt/ros/humble/setup.bash
-source install/setup.bash
-ros2 topic echo /hello
+ros2 topic echo /car_control/can/rx
 ```
 
-如果 K1 Mini 通过容器运行 ROS 2，先参考 [`../docker/readme.md`](../docker/readme.md) 准备容器环境，再在对应工作区中执行相同的 colcon 命令。
-
-## 测试
-
-当前包配置了 `ament_flake8` 和 `ament_pep257`：
+通过发送队列发布 `0x2FF`：
 
 ```sh
-colcon test --packages-select test
-colcon test-result --verbose
+ros2 topic pub --once /car_control/can/tx car_control/msg/CanFrame \
+  "{id: 767, dlc: 8, is_extended: false, is_remote: false, \
+  data: [66, 75, 49, 83, 84, 77, 51, 50]}"
 ```
 
-## USB-CAN 联调
+链路正常时会收到 ID `0x2FE` 且数据相同。日志统计中的 `heartbeat`、`echo` 应递增，`queue_drop`、`write_err` 和 `adapter_err` 应保持为零。
 
-计划链路为：
+## 工作区约定
 
-```text
-K1 Mini ── USB-CAN ── CAN_H/CAN_L ── CAN 收发器 ── STM32F103RCT6
-```
-
-USB-CAN 在 Linux 上应提供 SocketCAN 接口，例如 `can0`。STM32 当前使用 500 kbit/s：
-
-```sh
-sudo ip link set can0 down
-sudo ip link set can0 type can bitrate 500000
-sudo ip link set can0 up
-ip -details link show can0
-```
-
-安装 `can-utils` 后可以进行固件链路自检：
-
-```sh
-candump can0
-cansend can0 2FF#A1B2C3D4
-```
-
-预期每秒收到一次 `0x101` 心跳；发送 `0x2FF` 后应收到内容对应的 `0x2FE` echo。正式 ROS 2 CAN 节点尚未实现，目前这些命令仅用于 SocketCAN 和 STM32 固件联调。
-
-## 工作区结构与约定
-
-```text
-ros2_ws/
-├── README.md
-└── src/
-    └── test/
-        ├── package.xml
-        ├── setup.py
-        ├── test_pkg/          # 节点源码
-        └── test/              # flake8 / pep257 测试
-```
-
-- 新增 ROS 2 包放在 `src/<package_name>/`，依赖同步写入 `package.xml`。
-- `build/`、`install/`、`log/` 是 colcon 生成目录，已在仓库根 `.gitignore` 中忽略，不要提交。
-- 修改依赖或入口后，重新构建并重新加载 `install/setup.bash`。
-- CAN 控制协议以 STM32 工程的 [`Middleware/can_protocol/can_protocol.h`](../stm32f103rct6_proj/Middleware/can_protocol/can_protocol.h) 为当前依据。
+- 新包放在 `src/<package_name>/`，依赖同步写入 `package.xml`。
+- 不提交 `build/`、`install/`、`log/`。
+- 修改接口或依赖后重新构建，并重新加载 `install/setup.bash`。
+- CAN 业务协议以 STM32 的 [`can_protocol.h`](../stm32f103rct6_proj/Middleware/can_protocol/can_protocol.h) 为依据；达妙串口封装只处理传输，不掺入车辆业务语义。

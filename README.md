@@ -2,7 +2,7 @@
 
 OmniCar 是一个全向移动车软硬件单仓库，包含 STM32 下位机固件、ROS 2 上位机工作区以及硬件参考资料。上位机负责感知与任务控制，下位机负责实时外设和运动控制，两者计划通过 500 kbit/s CAN 总线通信。
 
-当前固件开发已从 STM32F407VET6 迁移到 STM32F103RCT6。截至 2026-09-21，F103 工程已完成第一阶段代码迁移、I2C1（PB6/PB7）配置和 CubeMX 再生成，并通过 Debug 交叉编译、ST-Link 烧录校验及 USART3 启动日志复测。后续工作是 ICM20948 通信、编码器、PWM/CAN 物理链路和闭环控制验证。
+当前固件开发已从 STM32F407VET6 迁移到 STM32F103RCT6。F103 工程已完成第一阶段迁移、I2C1 配置和基础 CAN 自检协议；K1 Mini 侧已新增 ROS 2 `car_control` 功能包及达妙 USB-CAN 通信节点。两端代码均可构建，CAN 物理链路仍需完成实物验收。
 
 ## 子工程
 
@@ -29,7 +29,7 @@ K1-Mini开发板位号ETH0的网口，配置为静态IP: 192.168.1.102，可以�
 ssh root@192.168.1.102  # 密码：root
 ```
 
-目前 ROS 2 工作区只有基础测试节点，尚未实现正式的 CAN 控制节点；STM32 固件已保留 0x101 心跳和 0x2FF/0x2FE echo 自检链路。
+ROS 2 工作区的 `car_control` 包通过 `/dev/ttyACM0` 直接使用达妙 USB-CAN CDC 协议；它不是 SocketCAN `can0`。发送者向 `/car_control/can/tx` 发布帧，通信节点统一排队并独占硬件发送，接收帧发布到 `/car_control/can/rx`。STM32 固件保留 `0x101` 心跳和 `0x2FF`/`0x2FE` echo 自检链路。
 
 ## 资料入口
 

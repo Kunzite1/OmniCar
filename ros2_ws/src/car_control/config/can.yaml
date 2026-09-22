@@ -1,0 +1,11 @@
+can_communication_node:
+  ros__parameters:
+    device: /dev/ttyACM0
+    serial_baud: 921600
+    can_bitrate_index: 3
+    tx_topic: /car_control/can/tx
+    rx_topic: /car_control/can/rx
+    tx_queue_capacity: 128
+    io_poll_timeout_ms: 5
+    max_tx_per_cycle: 32
+    log_frames: true
